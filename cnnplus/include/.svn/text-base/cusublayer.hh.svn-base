@@ -1,0 +1,95 @@
+/**************************************************************************//**
+ *
+ * \file   cusublayer.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jun 17 2009
+ *
+ * $Id$
+ *
+ * \brief  Header for cnnplus::CuSubLayer.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_CUSUBLAYER_HH
+#define CNNPLUS_CUSUBLAYER_HH
+
+#include "common.hh"
+#include "culayer.hh"
+#include "cusquasher.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! Subsampling layer
+template< typename T, class SquFnc = CuTanh<T> >
+class CuSubLayer : public CuLayer<T>
+{
+public:
+    //! Ctr
+    /*! \param sizeMapsIn size of input feature maps
+        \param numMaps number of feature maps
+        \param sizeSample sample size
+     */
+    CuSubLayer(Size const & sizeMapsIn, size_t numMaps,
+        Size const & sizeSample = Size(2, 2));
+    //! Dtr
+    virtual ~CuSubLayer();
+
+    virtual void forget(T sigma, bool scale = false);
+    virtual void forget();
+    virtual void reset();
+    virtual void update(T eta);
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut);
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut,
+                       bool accumGradients = false);
+#ifdef CNNPLUS_MATLAB_FOUND
+    virtual void load(mxArray const * arr);
+    virtual mxArray * save() const;
+#endif // CNNPLUS_MATLAB_FOUND
+    virtual Size sizeIn() const { return Size(numMaps_, sizeMapsIn_.area()); }
+    virtual Size sizeOut() const { return Size(numMaps_, sizeMapsOut_.area()); }
+    virtual void trainableParam(typename Layer<T>::TrainableParam & param);
+    virtual std::string toString() const;
+    virtual size_t numTrainableParam() const;
+    virtual size_t numConnections() const;
+
+    //! Returns the size of the input feature maps
+    Size sizeMapsIn() const { return sizeMapsIn_; }
+    //! Returns the size of the output feature maps
+    Size sizeMapsOut() const { return sizeMapsOut_; }
+    //! Returns the number of feature maps
+    size_t numMaps() const { return numMaps_; }
+    //! Returns the sample size
+    Size sizeSample() const { return sizeSample_; }
+
+private:
+    Size const sizeMapsIn_;
+    size_t const numMaps_;
+    Size const sizeSample_;
+    Size const sizeMapsOut_;
+
+    SquFnc squasher_;
+
+    // GPU
+    T * d_inSat_;
+    T * d_inSub_;
+    size_t d_strideInSub_;
+    T * d_tmp_;
+    T * d_weights_;
+    T * d_dWeights_;
+    T * d_biases_;
+    T * d_dBiases_;
+    T * d_sum_;
+    size_t d_strideSum_;
+    T * d_delta_;
+    size_t d_strideDelta_;
+
+    // CPU
+    T * h_weights_;
+    T * h_biases_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_CUSUBLAYER_HH

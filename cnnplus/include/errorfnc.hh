@@ -1,0 +1,93 @@
+/**************************************************************************//**
+ *
+ * \file   errorfnc.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jan 24 2009
+ *
+ * $Id: errorfnc.hh 1760 2009-07-15 14:21:23Z dast $
+ *
+ * \brief  Neural-net error functions.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_ERRORFNC_HH
+#define CNNPLUS_ERRORFNC_HH
+
+#include "common.hh"
+#include <string>
+
+CNNPLUS_NS_BEGIN
+
+//! An abstract base class for a error function
+template<typename T>
+class ErrorFnc
+{
+public:
+    //! Ctr
+    ErrorFnc(size_t size) : size_(size) {}
+    //! Dtr
+    virtual ~ErrorFnc() {}
+    //! Forward propagation
+    virtual T fprop(T * in, T const * desired) = 0;
+    //! Backpropagation
+    virtual void bprop(T * in) = 0;
+    //! Returns a string that describes the error function
+    virtual std::string toString() const = 0;
+private:
+    //! Cpy-Ctr, disabled
+    ErrorFnc(ErrorFnc const & rhs);
+    //! Assignment, disabled
+    ErrorFnc & operator=(ErrorFnc const & rhs);
+protected:
+    size_t const size_;
+};
+
+//! Mean squared error function (MSE)
+/*! \see C. M. Bishop, Neural Networks for Pattern Recognition, Oxford
+         University Press, (1995), page 195, 6.1 Sum-of-squares error.
+ */
+template<typename T>
+class MeanSquaredError : public ErrorFnc<T>
+{
+public:
+    //! Ctr
+    explicit MeanSquaredError(size_t size);
+    //! Dtr
+    virtual ~MeanSquaredError();
+    virtual T fprop(T * in, T const * desired);
+    virtual void bprop(T * in);
+    virtual std::string toString() const { return "MeanSquaredError"; }
+private:
+    T * diff_;
+    T * squares_;
+};
+
+//! Cross-entropy error function (CE)
+/*! \see
+    \li C. M. Bishop, Neural Networks for Pattern Recognition, Oxford
+        University Press, (1995), page 237, 6.7 Cross-entropy for
+        two classes
+    \li C. M. Bishop, Neural Networks for Pattern Recognition, Oxford
+        University Press, (1995), page 237, 6.9 Cross-entropy for
+        multiple classes
+    \li Microsoft Patent
+        "Training Convolutional Neural Networks on Graphics Processing Units"
+ */
+template<typename T>
+class CrossEntropy : public ErrorFnc<T>
+{
+public:
+    //! Ctr
+    explicit CrossEntropy(size_t size);
+    //! Dtr
+    virtual ~CrossEntropy();
+    virtual T fprop(T * in, T const * desired);
+    virtual void bprop(T * in);
+    virtual std::string toString() const { return "CrossEntropy"; }
+private:
+    T * diff_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_ERRORFNC_HH

@@ -1,0 +1,63 @@
+/**************************************************************************//**
+ *
+ * \file   gradienttest.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jan 25 2009
+ *
+ * $Id: gradienttest.hh 1553 2009-06-17 20:07:11Z dast $
+ *
+ * \brief  Header for cnnplus::GradientTest.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_GRADIENTTEST_HH
+#define CNNPLUS_GRADIENTTEST_HH
+
+#include "common.hh"
+#include "errorfnc.hh"
+
+CNNPLUS_NS_BEGIN
+
+template<typename T> class NeuralNet;
+
+//! Checking gradients with Finite-Differences
+/*! \see
+    \li C. M. Bishop, Neural Networks for Pattern Recognition, Oxford
+        University Press, (1995), page 147, 4.8.4 Numerical differentiation.
+    \li Jake Bouvrie, Notes on Convolutional Neural Networks (2006),
+        4.4 Checking Your Work with Finite-Differences,
+        http://web.mit.edu/jvb/www/papers/cnn_tutorial.pdf
+ */
+template< typename T, class ErrFnc = MeanSquaredError<T> >
+class GradientTest
+{
+public:
+    //! Default Ctr
+    GradientTest();
+    //! Ctr
+    /*! \param accThresh accuracy threshold
+        \param epsilon epsilon-value for perturbation
+     */
+    GradientTest(T accThresh, T epsilon);
+    //! Dtr
+    virtual ~GradientTest() {}
+    //! Runs the test
+    /*! \return \c true if test succeeded, otherwise \c false
+     */
+    virtual bool run(NeuralNet<T> & net, bool accumGradients = false);
+    //! Returns the maximal error
+    T err() const { return err_; }
+
+protected:
+    //! Initializes the desired output vector
+    void initDesired(T * des, size_t size);
+
+protected:
+    T const accThresh_;
+    T const epsilon_;
+    T err_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_GRADIENTTEST_HH

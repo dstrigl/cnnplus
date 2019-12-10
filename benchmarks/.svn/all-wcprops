@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/CUDA/!svn/ver/3436/cnnplus/benchmarks
+END
+bench_lenet5.cc
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/2461/cnnplus/benchmarks/bench_lenet5.cc
+END
+bench_garcianet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/2012/cnnplus/benchmarks/bench_garcianet.cc
+END
+bench_mlpnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/1722/cnnplus/benchmarks/bench_mlpnet.cc
+END
+bench_jahrernet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1722/cnnplus/benchmarks/bench_jahrernet.cc
+END
+bench_simardnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/3436/cnnplus/benchmarks/bench_simardnet.cc
+END
+CMakeLists.txt
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/2870/cnnplus/benchmarks/CMakeLists.txt
+END

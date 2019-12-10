@@ -1,0 +1,68 @@
+/**************************************************************************//**
+ *
+ * \file   culolnet.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jul 06 2009
+ *
+ * $Id$
+ *
+ * \brief  Header for cnnplus::CuLolNet.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_CULOLNET_HH
+#define CNNPLUS_CULOLNET_HH
+
+#include "common.hh"
+#include "cuneuralnet.hh"
+#include "cufulllayer.hh"
+#include "cuconvlayer.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! \todo doc
+template<typename T>
+class CuLolNet : public CuNeuralNet<T>
+{
+public:
+    //! Ctr
+    /*! \param numMapsL1 number of feature maps in layer 1
+        \param numMapsL2 number of feature maps in layer 2
+        \param connPropL2 probability of the connection ration in layer 2
+        \param sizeL3 size of layer 3
+     */
+    CuLolNet(size_t numMapsL1 =  10,
+             size_t numMapsL2 =  80, double connPropL2 = 0.2,
+             size_t sizeL3    = 100);
+    //! Dtr
+    virtual ~CuLolNet();
+    virtual void forget(T sigma, bool scale = false);
+    virtual void forget();
+    virtual void reset();
+    virtual void update(T eta);
+    virtual void fprop(T const * in, T * out);
+    virtual void bprop(T * in, T const * out, bool accumGradients = false);
+    virtual void load(std::string const & filename);
+    virtual void save(std::string const & filename) const;
+    virtual size_t sizeIn() const { return layer1_.sizeIn().area(); }
+    virtual size_t sizeOut() const { return layer4_.sizeOut().area(); }
+    virtual void trainableParam(typename NeuralNet<T>::TrainableParam & param);
+    virtual std::string toString() const;
+    virtual size_t numTrainableParam() const;
+    virtual size_t numConnections() const;
+
+private:
+    CuConvLayer< T, CuTanh<T> > layer1_;
+    CuConvLayer< T, CuTanh<T> > layer2_;
+    CuFullLayer< T, CuTanh<T> > layer3_;
+    CuFullLayer< T, CuTanh<T> > layer4_;
+
+    T * stateL1_; size_t strideL1_;
+    T * stateL2_; size_t strideL2_;
+    T * stateL3_; size_t strideL3_;
+    T * in_, * out_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_CULOLNET_HH

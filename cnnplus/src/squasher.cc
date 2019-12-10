@@ -1,0 +1,128 @@
+/**************************************************************************//**
+ *
+ * \file   squasher.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Dec 23 2008
+ *
+ * $Id: squasher.cc 1396 2009-06-04 06:33:11Z dast $
+ *
+ * \brief  Implementation of the neural-net squasher functions.
+ *
+ *****************************************************************************/
+
+#include "squasher.hh"
+#include "matvecli.hh"
+#include "mathli.hh"
+
+CNNPLUS_NS_BEGIN
+
+/*! \see mathli::logsigmoid
+ */
+template<typename T> void
+LogSigmoid<T>::fprop(T const * in, size_t const strideIn, T * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Compute: out = logsigmoid(in)
+    matvecli::logsigm<T>(in, strideIn, out, strideOut, this->size_.height(), this->size_.width());
+}
+
+/*! \see mathli::dlogsigmoid
+ */
+template<typename T> void
+LogSigmoid<T>::bprop(T * in, size_t const strideIn, T const * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Compute: in = dlogsigmoid(in) .* out
+    matvecli::dlogsigm<T>(in, strideIn, this->size_.height(), this->size_.width());
+    matvecli::pmulmm<T>(in, strideIn, out, strideOut, this->size_.height(), this->size_.width());
+}
+
+/*! \see mathli::tanh
+ */
+template<typename T> void
+Tanh<T>::fprop(T const * in, size_t const strideIn, T * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Compute: out = tanh(in)
+    matvecli::tanhm<T>(in, strideIn, out, strideOut, this->size_.height(), this->size_.width());
+}
+
+/*! \see mathli::dtanh
+ */
+template<typename T> void
+Tanh<T>::bprop(T * in, size_t const strideIn, T const * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Compute: in = dtanh(in) .* out
+    matvecli::dtanhm<T>(in, strideIn, this->size_.height(), this->size_.width());
+    matvecli::pmulmm<T>(in, strideIn, out, strideOut, this->size_.height(), this->size_.width());
+}
+
+/*! \see mathli::stdsigmoid
+ */
+template<typename T> void
+StdSigmoid<T>::fprop(T const * in, size_t const strideIn, T * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Compute: out = stdsigmoid(in)
+    matvecli::stdsigm<T>(in, strideIn, out, strideOut, this->size_.height(), this->size_.width());
+}
+
+/*! \see mathli::dstdsigmoid
+ */
+template<typename T> void
+StdSigmoid<T>::bprop(T * in, size_t const strideIn, T const * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Compute: in = dstdsigmoid(in) .* out
+    matvecli::dstdsigm<T>(in, strideIn, this->size_.height(), this->size_.width());
+    matvecli::pmulmm<T>(in, strideIn, out, strideOut, this->size_.height(), this->size_.width());
+}
+
+template<typename T> void
+Identity<T>::fprop(T const * in, size_t const strideIn, T * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Copy matrix 'in' to 'out'
+    matvecli::copymm<T>(in, strideIn, out, strideOut, this->size_.height(), this->size_.width());
+}
+
+template<typename T> void
+Identity<T>::bprop(T * in, size_t const strideIn, T const * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in  && strideIn  >= this->size_.width());
+    CNNPLUS_ASSERT(out && strideOut >= this->size_.width());
+
+    // Copy matrix 'out' to 'in'
+    matvecli::copymm<T>(out, strideOut, in, strideIn, this->size_.height(), this->size_.width());
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class LogSigmoid<float>;
+template class Tanh<float>;
+template class StdSigmoid<float>;
+template class Identity<float>;
+
+template class LogSigmoid<double>;
+template class Tanh<double>;
+template class StdSigmoid<double>;
+template class Identity<double>;
+/*! @} */
+
+CNNPLUS_NS_END

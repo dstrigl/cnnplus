@@ -1,0 +1,101 @@
+/**************************************************************************//**
+ *
+ * \file   bench_simardnet.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jun 01 2009
+ *
+ * $Id: bench_simardnet.cc 3436 2010-02-02 14:56:01Z dast $
+ *
+ *****************************************************************************/
+
+#include <iostream>
+#include <iomanip>
+#include "simardnet.hh"
+#ifdef CNNPLUS_USE_CUDA
+#include "cusimardnet.hh"
+#endif // CNNPLUS_USE_CUDA
+#include "propsbench.hh"
+using namespace cnnplus;
+
+template<typename T>
+void run(Size const & sizeImgIn = Size(29, 29),
+         size_t const numMapsL1 = 5,
+         size_t const numMapsL2 = 50,
+         size_t const sizeL3    = 100,
+         size_t const numRuns   = 1000)
+{
+    SimardNet<T> net(sizeImgIn, numMapsL1, numMapsL2, sizeL3);
+
+    double t1 = 0;
+    for (size_t i = 0; i < 3; ++i)
+        t1 += PropsBench(numRuns).run(net, true);
+    t1 /= 3;
+
+    //std::cout << net.toString() << ": " << t1 << " sec" << std::endl;
+    //std::cout << "CPU " << sizeImgIn.toString() << ": " << t1 << " sec" << std::endl;
+    std::cout << std::setw(10) << std::setprecision(5) << t1;
+
+#ifdef CNNPLUS_USE_CUDA
+    CuSimardNet<T> cuNet(sizeImgIn, numMapsL1, numMapsL2, sizeL3);
+
+    double t2 = 0;
+    for (size_t i = 0; i < 3; ++i)
+        t2 += PropsBench(numRuns).run(cuNet, true);
+    t2 /= 3;
+
+    //std::cout << cuNet.toString() << ": " << t2 << " sec" << std::endl;
+    //std::cout << "GPU " << sizeImgIn.toString() << ": " << t2 << " sec" << std::endl;
+    //std::cout << "CPU/GPU: " << (t1 / t2) << std::endl << std::endl;
+    std::cout << "\t" << std::setw(10) << std::setprecision(5) << t2;
+    std::cout << "\t" << std::setw(10) << std::setprecision(5) << (t1/t2);
+#endif // CNNPLUS_USE_CUDA
+
+    std::cout << std::endl;
+}
+
+int main(int argc, char *argv[])
+{
+    typedef float DataType;
+#if 0
+    for (size_t i = 0; i < 20; ++i)
+        run<DataType>(Size(29 + i * 4, 29 + i * 4));
+    return 0;
+#endif
+    run<DataType>(Size(29, 29),  5,  50, 100);
+    run<DataType>(Size(29, 29),  5,  50, 200);
+    run<DataType>(Size(29, 29),  5, 100, 100);
+    run<DataType>(Size(29, 29),  5, 100, 200);
+    run<DataType>(Size(29, 29), 10,  50, 100);
+    run<DataType>(Size(29, 29), 10,  50, 200);
+    run<DataType>(Size(29, 29), 10, 100, 100);
+    run<DataType>(Size(29, 29), 10, 100, 200);
+#if 0
+    run<DataType>(Size(41, 41),  5,  50, 100);
+    run<DataType>(Size(41, 41),  5,  50, 200);
+    run<DataType>(Size(41, 41),  5, 100, 100);
+    run<DataType>(Size(41, 41),  5, 100, 200);
+    run<DataType>(Size(41, 41), 10,  50, 100);
+    run<DataType>(Size(41, 41), 10,  50, 200);
+    run<DataType>(Size(41, 41), 10, 100, 100);
+    run<DataType>(Size(41, 41), 10, 100, 200);
+
+    run<DataType>(Size(49, 49),  5,  50, 100);
+    run<DataType>(Size(49, 49),  5,  50, 200);
+    run<DataType>(Size(49, 49),  5, 100, 100);
+    run<DataType>(Size(49, 49),  5, 100, 200);
+    run<DataType>(Size(49, 49), 10,  50, 100);
+    run<DataType>(Size(49, 49), 10,  50, 200);
+    run<DataType>(Size(49, 49), 10, 100, 100);
+    run<DataType>(Size(49, 49), 10, 100, 200);
+
+    run<DataType>(Size(57, 57),  5,  50, 100);
+    run<DataType>(Size(57, 57),  5,  50, 200);
+    run<DataType>(Size(57, 57),  5, 100, 100);
+    run<DataType>(Size(57, 57),  5, 100, 200);
+    run<DataType>(Size(57, 57), 10,  50, 100);
+    run<DataType>(Size(57, 57), 10,  50, 200);
+    run<DataType>(Size(57, 57), 10, 100, 100);
+    run<DataType>(Size(57, 57), 10, 100, 200);
+#endif
+    return 0;
+}

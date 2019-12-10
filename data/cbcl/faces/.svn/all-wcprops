@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/CUDA/!svn/ver/1396/cnnplus/data/cbcl/faces
+END
+face.test.tar.gz
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/CUDA/!svn/ver/1396/cnnplus/data/cbcl/faces/face.test.tar.gz
+END
+svm.train.normgrey
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/1396/cnnplus/data/cbcl/faces/svm.train.normgrey
+END
+svm.test.normgrey
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1396/cnnplus/data/cbcl/faces/svm.test.normgrey
+END
+README
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/CUDA/!svn/ver/1396/cnnplus/data/cbcl/faces/README
+END
+face.train.tar.gz
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1396/cnnplus/data/cbcl/faces/face.train.tar.gz
+END

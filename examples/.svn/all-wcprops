@@ -1,0 +1,101 @@
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/CUDA/!svn/ver/3561/cnnplus/examples
+END
+train_mlpnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/2765/cnnplus/examples/train_mlpnet.cc
+END
+show_cbclfaces.cc
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/1410/cnnplus/examples/show_cbclfaces.cc
+END
+train_facefindernet2.cc
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/CUDA/!svn/ver/3167/cnnplus/examples/train_facefindernet2.cc
+END
+train_jahrernet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/2868/cnnplus/examples/train_jahrernet.cc
+END
+train_simardnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/3561/cnnplus/examples/train_simardnet.cc
+END
+train_phungnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/2868/cnnplus/examples/train_phungnet.cc
+END
+facefinder.cc
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/CUDA/!svn/ver/3251/cnnplus/examples/facefinder.cc
+END
+train_lenet5_bench.cc
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/2868/cnnplus/examples/train_lenet5_bench.cc
+END
+show_matsrc.cc
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/CUDA/!svn/ver/1940/cnnplus/examples/show_matsrc.cc
+END
+train_lenet5.cc
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/3436/cnnplus/examples/train_lenet5.cc
+END
+CMakeLists.txt
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/CUDA/!svn/ver/3145/cnnplus/examples/CMakeLists.txt
+END
+train_lolnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/2708/cnnplus/examples/train_lolnet.cc
+END
+test_precision.cc
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/2708/cnnplus/examples/test_precision.cc
+END
+train_facefindernet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1940/cnnplus/examples/train_facefindernet.cc
+END
+train_garcianet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1724/cnnplus/examples/train_garcianet.cc
+END
+show_mnist.cc
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/CUDA/!svn/ver/1411/cnnplus/examples/show_mnist.cc
+END

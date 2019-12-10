@@ -1,0 +1,117 @@
+/**************************************************************************//**
+ *
+ * \file   layer.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Dec 09 2008
+ *
+ * $Id$
+ *
+ * \brief  Header for cnnplus::Layer.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_LAYER_HH
+#define CNNPLUS_LAYER_HH
+
+#include "common.hh"
+#include "types.hh"
+#include <string>
+#ifdef CNNPLUS_MATLAB_FOUND
+#include <mat.h>
+#endif // CNNPLUS_MATLAB_FOUND
+
+CNNPLUS_NS_BEGIN
+
+//! Neural network layer
+template<typename T>
+class Layer
+{
+public:
+    //! The trainable parameters of a layer
+    struct TrainableParam
+    {
+        //! Weight and weight-gradient matrix
+        struct {
+            T *    val;        //!< Pointer to weight matrix
+            T *    dVal;       //!< Pointer to weight-gradient matrix
+            T *    mask;       //!< Pointer to weight-mask
+            size_t strideVal;  //!< Stride of weight matrix
+            size_t strideDVal; //!< Stride of weight-gradient matrix
+            size_t strideMask; //!< Stride of weight-mask
+            size_t rows;       //!< Rows of matrix
+            size_t cols;       //!< Columns of matrix
+        } weights;
+
+        //! Bias and bias-gradient vector
+        struct {
+            T *    val;        //!< Pointer to bias vector
+            T *    dVal;       //!< Pointer to bias-gradient vector
+            size_t len;        //!< Length of vector
+        } biases;
+    };
+
+public:
+    //! Ctr
+    Layer() {}
+    //! Dtr
+    virtual ~Layer() {}
+    //! Initializes weights with random values
+    /*! \param sigma standard deviation
+     */
+    virtual void forget(T sigma, bool scale = false) = 0;
+    //! Initializes weights
+    virtual void forget() = 0;
+    //! Resets the gradients to zero
+    virtual void reset() = 0;
+    //! Updates weights and biases
+    virtual void update(T eta) = 0;
+    //! Forward propagation
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut) = 0;
+    //! Backpropagation
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut,
+                       bool accumGradients = false) = 0;
+#ifdef CNNPLUS_MATLAB_FOUND
+    //! Loads weight values
+    virtual void load(mxArray const * arr) = 0;
+    //! Saves weight values
+    virtual mxArray * save() const = 0;
+    //! Writes the output of the layer
+    virtual mxArray * writeOut(T * const out, size_t strideOut) const = 0;
+#endif // CNNPLUS_MATLAB_FOUND
+    //! Returns the input size
+    virtual Size sizeIn() const = 0;
+    //! Returns the output size
+    virtual Size sizeOut() const = 0;
+    //! Returns the trainable parameters of the layer
+    virtual void trainableParam(TrainableParam & param) = 0;
+    //! Returns a string that describes the layer
+    virtual std::string toString() const = 0;
+    //! Returns the number of trainable parameters of the layer
+    virtual size_t numTrainableParam() const = 0;
+    //! Returns the number of connections of the layer
+    virtual size_t numConnections() const = 0;
+
+private:
+    //! Cpy-Ctr, disabled
+    Layer(Layer const & rhs);
+    //! Assignment, disabled
+    Layer & operator=(Layer const & rhs);
+
+protected:
+#ifdef CNNPLUS_MATLAB_FOUND
+    //! Checks validity of a Matlab array
+    /*! \param arr the Matlab array
+        \param ndims the expected number of dimensions
+        \param dims an array with the expected dimensions
+     */
+    bool checkArr(mxArray const * arr, mwSize ndims, mwSize const * dims) const;
+    //! Checks type of layer
+    bool checkType(mxArray const * arr, std::string const & type) const;
+#endif // CNNPLUS_MATLAB_FOUND
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_LAYER_HH

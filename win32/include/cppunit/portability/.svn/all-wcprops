@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability
+END
+Stream.h
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/Stream.h
+END
+Makefile.in
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/Makefile.in
+END
+FloatingPoint.h
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/FloatingPoint.h
+END
+CppUnitSet.h
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/CppUnitSet.h
+END
+CppUnitMap.h
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/CppUnitMap.h
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/Makefile.am
+END
+CppUnitVector.h
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/CppUnitVector.h
+END
+CppUnitDeque.h
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/CppUnitDeque.h
+END
+CppUnitStack.h
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/portability/CppUnitStack.h
+END

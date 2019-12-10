@@ -1,0 +1,71 @@
+/**************************************************************************//**
+ *
+ * \file   cbclfacedatasrc.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Apr 06 2009
+ *
+ * $Id: cbclfacedatasrc.hh 1827 2009-07-20 18:17:58Z dast $
+ *
+ * \brief  Header for cnnplus::CbclFaceDataSrc.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_CBCLFACEDATASRC_HH
+#define CNNPLUS_CBCLFACEDATASRC_HH
+
+#include "common.hh"
+#include "datasource.hh"
+#include <vector>
+
+CNNPLUS_NS_BEGIN
+
+//! Data source for the CBCL Face Database
+/*! \see http://cbcl.mit.edu/software-datasets/FaceData2.html
+    \note
+    In each database file, the first line contains the number of examples
+    (6,977 training, 24,045 test), the second line contains the number of
+    dimensions (19x19 = 361). Each additional line consists of a single image,
+    histogram equalized and normalized so that all pixel values are between 0
+    and 1, followed by a 1 for a face or a -1 for a non-face.
+ */
+template<typename T>
+class CbclFaceDataSrc : public DataSource<T>
+{
+public:
+    //! Ctr
+    /*! \param imgSize desired size of the images (patterns)
+     */
+    CbclFaceDataSrc(Size const & imgSize = Size(19, 19),
+        T dataRangeMin = -1, T dataRangeMax = 1);
+    //! Dtr
+    virtual ~CbclFaceDataSrc() { unload(); }
+
+    //! Loads the images and labels from the database file
+    void load(std::string const & filename);
+    //! Unloads the images and labels
+    void unload() throw();
+
+    virtual int fprop(T * out);
+    virtual int seek(int pos);
+    virtual void shuffle();
+    virtual void shift(int dist);
+    virtual void reset();
+    virtual size_t sizeOut() const;
+    virtual Size sizePattern() const;
+    virtual int idx(int pos = -1) const;
+    virtual std::string toString() const;
+
+protected:
+    std::string filename_;
+    Size const imageSize_;
+    T const scale_, shift_;
+    std::vector<int> idx_;
+    size_t const yStart_, yEnd_;
+    size_t const xStart_, xEnd_;
+    T * images_;
+    char * labels_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_CBCLFACEDATASRC_HH

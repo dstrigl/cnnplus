@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin
+END
+PlugInManager.h
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/PlugInManager.h
+END
+Makefile.in
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/Makefile.in
+END
+TestPlugIn.h
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/TestPlugIn.h
+END
+PlugInParameters.h
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/PlugInParameters.h
+END
+DynamicLibraryManagerException.h
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/DynamicLibraryManagerException.h
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/Makefile.am
+END
+DynamicLibraryManager.h
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/DynamicLibraryManager.h
+END
+TestPlugInDefaultImpl.h
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/plugin/TestPlugInDefaultImpl.h
+END

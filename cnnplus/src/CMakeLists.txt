@@ -1,0 +1,49 @@
+#******************************************************************************
+#
+# \file   CMakeLists.txt
+# \author Daniel Strigl, Klaus Kofler
+# \date   Jun 01 2009
+#
+# $Id: CMakeLists.txt 1777 2009-07-17 08:34:46Z dast $
+#
+#******************************************************************************
+
+set(SOURCES batchtrainer.cc
+            cbclfacedatasrc.cc
+            contbl.cc
+            convlayer.cc
+            datasrcview.cc
+            elastdistdatasrc.cc
+            errorfnc.cc
+            fulllayer.cc
+            fulllayernet.cc
+            garcianet.cc
+            gradienttest.cc
+            jacobiantest.cc
+            jahrernet.cc
+            layer.cc
+            lenet5.cc
+            lolnet.cc
+            mathli.cc
+            matvecli.cc
+            mnistsource.cc
+            momentumtrainer.cc
+            normdatasrc.cc
+            onlinetrainer.cc
+            propsbench.cc
+            randutil.cpp
+            simardnet.cc
+            squasher.cc
+            sublayer.cc
+            subsetdatasrc.cc
+            tests.cc
+            timer.cc
+            trainer.cc
+            uniondatasrc.cc
+            rproptrainer.cc
+            phungnet.cc
+            facefindernet.cc
+)
+if(MATLAB_FOUND)
+   list(APPEND SOURCES matdatasrc.cc)
+endif()

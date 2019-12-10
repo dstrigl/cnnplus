@@ -1,0 +1,110 @@
+/**************************************************************************//**
+ *
+ * \file   squasher.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Dec 23 2008
+ *
+ * $Id: squasher.hh 1396 2009-06-04 06:33:11Z dast $
+ *
+ * \brief  Neural-net squasher functions (also known as activation functions).
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_SQUASHER_HH
+#define CNNPLUS_SQUASHER_HH
+
+#include "common.hh"
+#include "types.hh"
+#include <string>
+
+CNNPLUS_NS_BEGIN
+
+//! An abstract base class for a squasher function
+template<typename T>
+class Squasher
+{
+public:
+    //! Ctr
+    explicit Squasher(Size const & size) : size_(size) {}
+    //! Dtr
+    virtual ~Squasher() {}
+    //! Forward propagation
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut) = 0;
+    //! Backpropagation
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut) = 0;
+    //! Returns a string that describes the squasher function
+    virtual std::string toString() const = 0;
+private:
+    //! Cpy-Ctr, disabled
+    Squasher(Squasher const & rhs);
+    //! Assignment, disabled
+    Squasher & operator=(Squasher const & rhs);
+protected:
+    Size const size_;
+};
+
+//! The \e logistic neural-net sigmoid squasher function
+template<typename T>
+class LogSigmoid : public Squasher<T>
+{
+public:
+    //! Ctr
+    explicit LogSigmoid(Size const & size) : Squasher<T>(size)
+    {}
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut);
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut);
+    virtual std::string toString() const { return "LogSigmoid"; }
+};
+
+//! The hyperbolic tangent sigmoid squasher function
+template<typename T>
+class Tanh : public Squasher<T>
+{
+public:
+    //! Ctr
+    explicit Tanh(Size const & size) : Squasher<T>(size)
+    {}
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut);
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut);
+    virtual std::string toString() const { return "Tanh"; }
+};
+
+//! The \e standard neural-net sigmoid squasher function
+template<typename T>
+class StdSigmoid : public Squasher<T>
+{
+public:
+    //! Ctr
+    explicit StdSigmoid(Size const & size) : Squasher<T>(size)
+    {}
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut);
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut);
+    virtual std::string toString() const { return "StdSigmoid"; }
+};
+
+//! The \e identity activation function
+template<typename T>
+class Identity : public Squasher<T>
+{
+public:
+    //! Ctr
+    explicit Identity(Size const & size) : Squasher<T>(size)
+    {}
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut);
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut);
+    virtual std::string toString() const { return "Identity"; }
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_SQUASHER_HH

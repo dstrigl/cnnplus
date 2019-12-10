@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/CUDA/!svn/ver/3408/cnnplus/CMakeModules
+END
+machine-settings.cmake
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/CUDA/!svn/ver/2467/cnnplus/CMakeModules/machine-settings.cmake
+END
+FindCppUnit.cmake
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1396/cnnplus/CMakeModules/FindCppUnit.cmake
+END
+FindOpenCV.cmake
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/2372/cnnplus/CMakeModules/FindOpenCV.cmake
+END

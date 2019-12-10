@@ -1,0 +1,111 @@
+/**************************************************************************//**
+ *
+ * \file   normdatasrc.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Mar 03 2009
+ *
+ * $Id: normdatasrc.cc 1477 2009-06-11 09:04:50Z dast $
+ *
+ * \brief  Implementation of cnnplus::NormDataSrc.
+ *
+ *****************************************************************************/
+
+#include "normdatasrc.hh"
+#include "error.hh"
+#include "matvecli.hh"
+#include "mathli.hh"
+#include <sstream>
+
+CNNPLUS_NS_BEGIN
+
+template<typename T>
+NormDataSrc<T>::NormDataSrc(DataSource<T> & ds)
+    : DataSource<T>(ds.dataRangeMin(), ds.dataRangeMax()), ds_(ds),
+    mean_(0), stdev_(1)
+{
+    // Allocate memory and store current position
+    T * out = matvecli::allocv<T>(ds_.sizeOut());
+    int const pos = ds_.tell();
+
+    // Compute mean value
+    mean_ = 0;
+    ds_.rewind();
+    for (int i = 1; i <= ds_.size(); ds_.next(), ++i) {
+        ds_.fprop(out);
+        mean_ += matvecli::sumv<T>(out, ds_.sizeOut()) / ds_.sizeOut();
+    }
+    mean_ /= ds_.size();
+
+    // Compute standard deviation value
+    stdev_ = 0;
+    ds_.rewind();
+    for (int i = 1; i <= ds_.size(); ds_.next(), ++i) {
+        ds_.fprop(out);
+        matvecli::subvc<T>(out, mean_, ds_.sizeOut());
+        stdev_ += mathli::sqrt(
+            matvecli::sumsqrv<T>(out, ds_.sizeOut()) / ds_.sizeOut());
+    }
+    stdev_ /= ds_.size();
+
+    // Restore position and deallocate memory
+    ds_.seek(pos);
+    matvecli::free<T>(out);
+}
+
+template<typename T> int
+NormDataSrc<T>::fprop(T * out)
+{
+    CNNPLUS_ASSERT(out);
+
+    // Normalize data: out = (out - mean_) ./ stdev_
+    int const label = ds_.fprop(out);
+    matvecli::subvc<T>(out, mean_, ds_.sizeOut());
+    matvecli::divvc<T>(out, stdev_, ds_.sizeOut());
+    return label;
+}
+
+template<typename T> T
+NormDataSrc<T>::covariance(bool const normalized)
+{
+    // Allocate memory and store current position
+    T * out = matvecli::allocv<T>(ds_.sizeOut());
+    int const pos = ds_.tell();
+
+    // Compute covariance
+    T cov = 0;
+    ds_.rewind();
+    for (int i = 1; i <= ds_.size(); ds_.next(), ++i) {
+        if (normalized) this->fprop(out);
+        else ds_.fprop(out);
+        cov += matvecli::sumsqrv<T>(out, ds_.sizeOut()) / ds_.sizeOut();
+    }
+    cov /= ds_.size();
+
+    // Restore position and deallocate memory
+    ds_.seek(pos);
+    matvecli::free<T>(out);
+
+    return cov;
+}
+
+template<typename T> std::string
+NormDataSrc<T>::toString() const
+{
+    std::stringstream ss;
+    ss << "NormDataSrc["
+        << ds_.toString()
+        << "; mean=" << mean_
+        << ", stdev=" << stdev_
+        << ", dataRange=[" << dataRangeMin() << "," << dataRangeMax() << "]"
+        << "]";
+    return ss.str();
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class NormDataSrc<float>;
+template class NormDataSrc<double>;
+/*! @} */
+
+CNNPLUS_NS_END

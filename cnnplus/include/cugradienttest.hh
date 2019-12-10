@@ -1,0 +1,41 @@
+/**************************************************************************//**
+ *
+ * \file   cugradienttest.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jun 05 2009
+ *
+ * $Id: cugradienttest.hh 1726 2009-07-13 07:37:14Z dast $
+ *
+ * \brief  Header for cnnplus::CuGradientTest.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_CUGRADIENTTEST_HH
+#define CNNPLUS_CUGRADIENTTEST_HH
+
+#include "common.hh"
+#include "gradienttest.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! Checking gradients with Finite-Differences for CUDA enabled neural-nets
+template< typename T, class ErrFnc = MeanSquaredError<T> >
+class CuGradientTest : public GradientTest<T, ErrFnc>
+{
+public:
+    //! Default Ctr
+    CuGradientTest() : GradientTest<T, ErrFnc>()
+    {}
+    //! Ctr
+    /*! \param accThresh accuracy threshold
+        \param epsilon epsilon-value for perturbation
+     */
+    CuGradientTest(T accThresh, T epsilon)
+        : GradientTest<T, ErrFnc>(accThresh, epsilon)
+    {}
+    virtual bool run(NeuralNet<T> & net, bool accumGradients = false);
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_CUGRADIENTTEST_HH

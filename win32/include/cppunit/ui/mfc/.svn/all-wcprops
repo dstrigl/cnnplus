@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/ui/mfc
+END
+TestRunner.h
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/ui/mfc/TestRunner.h
+END
+Makefile.in
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/ui/mfc/Makefile.in
+END
+MfcTestRunner.h
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/ui/mfc/MfcTestRunner.h
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/ui/mfc/Makefile.am
+END

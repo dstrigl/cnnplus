@@ -1,0 +1,38 @@
+/**************************************************************************//**
+ *
+ * \file   culayer.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jul 06 2009
+ *
+ * $Id: culayer.hh 1905 2009-07-30 20:21:22Z dast $
+ *
+ * \brief  Header for cnnplus::CuLayer.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_CULAYER_HH
+#define CNNPLUS_CULAYER_HH
+
+#include "common.hh"
+#include "layer.hh"
+#include "error.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! Neural network layer, running on the GPU
+template<typename T>
+class CuLayer : public Layer<T>
+{
+public:
+#ifdef CNNPLUS_MATLAB_FOUND
+    virtual mxArray * writeOut(T * const out, size_t strideOut) const
+    {
+        throw NotImplementedError(
+            "Function 'writeOut' not supported by layers, running on the GPU.");
+    }
+#endif // CNNPLUS_MATLAB_FOUND
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_CULAYER_HH

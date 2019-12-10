@@ -1,0 +1,1001 @@
+/**************************************************************************//**
+ *
+ * \file   test_cumvli.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jun 01 2009
+ *
+ * $Id: test_cumvli.cc 1637 2009-06-30 12:27:04Z dast $
+ *
+ *****************************************************************************/
+
+#include "mathli.hh"
+#include "cumvli.hh"
+#include "matvecli.hh"
+#include <cppunit/extensions/HelperMacros.h>
+#include <cppunit/extensions/TestFactoryRegistry.h>
+#include <cppunit/ui/text/TestRunner.h>
+#include <cppunit/CompilerOutputter.h>
+using namespace cnnplus;
+
+class CumvliTest : public CppUnit::TestFixture
+{
+    CPPUNIT_TEST_SUITE(CumvliTest);
+    CPPUNIT_TEST(testAllocv);
+    CPPUNIT_TEST(testAllocm);
+    CPPUNIT_TEST(testZerovGetelv);
+    CPPUNIT_TEST(testZeromGetelm);
+    CPPUNIT_TEST(testSetelvGetelv);
+    CPPUNIT_TEST(testSetelmGetelm);
+    CPPUNIT_TEST(testCopyvv);
+    CPPUNIT_TEST(testCopymm);
+    CPPUNIT_TEST(testCopymv);
+    CPPUNIT_TEST(testCopyvm);
+    CPPUNIT_TEST(testCopyv_h2d);
+    CPPUNIT_TEST(testCopyv_d2h);
+    CPPUNIT_TEST(testCopym_h2d);
+    CPPUNIT_TEST(testCopym_d2h);
+    CPPUNIT_TEST(testAxpy);
+    CPPUNIT_TEST(testGer);
+    CPPUNIT_TEST(testAddv);
+    CPPUNIT_TEST(testMulmm);
+    CPPUNIT_TEST(testSumrow);
+    CPPUNIT_TEST(testSumrowacc);
+    CPPUNIT_TEST(testPmulmm);
+    CPPUNIT_TEST(testSetv);
+    CPPUNIT_TEST(testSetm);
+    CPPUNIT_TEST(testMulv);
+    CPPUNIT_TEST(testGemv);
+    CPPUNIT_TEST(testAbsmaxv);
+    CPPUNIT_TEST_SUITE_END();
+
+public:
+    void testAllocv();
+    void testAllocm();
+    void testZerovGetelv();
+    void testZeromGetelm();
+    void testSetelvGetelv();
+    void testSetelmGetelm();
+    void testCopyvv();
+    void testCopymm();
+    void testCopymv();
+    void testCopyvm();
+    void testCopyv_h2d();
+    void testCopyv_d2h();
+    void testCopym_h2d();
+    void testCopym_d2h();
+    void testAxpy();
+    void testGemv();
+    void testGer();
+    void testAddv();
+    void testMulmm();
+    void testSumrow();
+    void testSumrowacc();
+    void testPmulmm();
+    void testSetv();
+    void testSetm();
+    void testMulv();
+    void testAbsmaxv();
+
+    virtual void setUp() {
+        freeGpuMem_ = cumvli::freemem();
+    }
+    virtual void tearDown() {
+        CPPUNIT_ASSERT_EQUAL(freeGpuMem_, cumvli::freemem());
+    }
+
+private:
+    size_t freeGpuMem_;
+};
+
+void
+CumvliTest::testAllocv()
+{
+    size_t const len = 1234;
+    float * v = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v);
+    cumvli::free<float>(v);
+}
+
+void
+CumvliTest::testAllocm()
+{
+    size_t const rows = 654, cols = 321;
+    size_t stride = 0;
+    float * m = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(m && stride >= cols);
+    cumvli::free<float>(m);
+}
+
+void
+CumvliTest::testZerovGetelv()
+{
+    size_t const len = 1234;
+    float * v = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v);
+    cumvli::zerov<float>(v, len);
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(v, i) == 0);
+    }
+    cumvli::free<float>(v);
+}
+
+void
+CumvliTest::testZeromGetelm()
+{
+    size_t const rows = 123, cols = 456;
+    size_t stride = 0;
+    float * m = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(m && stride >= cols);
+    cumvli::zerom<float>(m, stride, rows, cols);
+    for (size_t r = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c) {
+            CPPUNIT_ASSERT(cumvli::getelm<float>(m, stride, r, c) == 0);
+        }
+    }
+    cumvli::free<float>(m);
+}
+
+void
+CumvliTest::testSetelvGetelv()
+{
+    size_t const len = 1234;
+    float * v = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(v, i, float(i));
+        CPPUNIT_ASSERT(cumvli::getelv<float>(v, i) == i);
+    }
+    cumvli::free<float>(v);
+}
+
+void
+CumvliTest::testSetelmGetelm()
+{
+    size_t const rows = 123, cols = 456;
+    size_t stride = 0;
+    float * m = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(m && stride >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(m, stride, r, c, float(i));
+            CPPUNIT_ASSERT(cumvli::getelm<float>(m, stride, r, c) == i);
+        }
+    }
+    cumvli::free<float>(m);
+}
+
+void
+CumvliTest::testCopyvv()
+{
+    size_t const len = 1234;
+
+    float * v1 = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v1);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(v1, i, float(i));
+    }
+
+    float * v2 = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v2);
+    cumvli::copyvv<float>(v1, v2, len);
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(v2, i) == i);
+    }
+
+    cumvli::free<float>(v1);
+    cumvli::free<float>(v2);
+}
+
+void
+CumvliTest::testCopymm()
+{
+    size_t const rows = 123, cols = 456;
+
+    size_t stride1 = 0;
+    float * m1 = cumvli::allocm<float>(rows, cols, stride1);
+    CPPUNIT_ASSERT(m1 && stride1 >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(m1, stride1, r, c, float(i));
+        }
+    }
+
+    size_t stride2 = 0;
+    float * m2 = cumvli::allocm<float>(rows, cols, stride2);
+    CPPUNIT_ASSERT(m2 && stride2 >= cols);
+    cumvli::copymm<float>(m1, stride1, m2, stride2, rows, cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            CPPUNIT_ASSERT(cumvli::getelm<float>(m2, stride2, r, c) == i);
+        }
+    }
+
+    cumvli::free<float>(m1);
+    cumvli::free<float>(m2);
+}
+
+void
+CumvliTest::testCopymv()
+{
+    size_t const rows = 123, cols = 456;
+    size_t const len = rows * cols;
+
+    size_t stride = 0;
+    float * m = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(m && stride >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(m, stride, r, c, float(i));
+        }
+    }
+
+    float * v = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v);
+    cumvli::copymv<float>(m, stride, v, rows, cols);
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(v, i) == i);
+    }
+
+    cumvli::free<float>(m);
+    cumvli::free<float>(v);
+}
+
+void
+CumvliTest::testCopyvm()
+{
+    size_t const rows = 123, cols = 456;
+    size_t const len = rows * cols;
+
+    float * v = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(v, i, float(i));
+    }
+
+    size_t stride = 0;
+    float * m = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(m && stride >= cols);
+    cumvli::copyvm<float>(v, m, stride, rows, cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            CPPUNIT_ASSERT(cumvli::getelm<float>(m, stride, r, c) == i);
+        }
+    }
+
+    cumvli::free<float>(v);
+    cumvli::free<float>(m);
+}
+
+void
+CumvliTest::testCopyv_h2d()
+{
+    size_t const len = 1234;
+
+    float * v1 = matvecli::allocv<float>(len);
+    CPPUNIT_ASSERT(v1);
+    for (size_t i = 0; i < len; ++i) {
+        matvecli::setelv<float>(v1, i, float(i));
+    }
+
+    float * v2 = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v2);
+    cumvli::copyv_h2d<float>(v1, v2, len);
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(v2, i) == i);
+    }
+
+    matvecli::free<float>(v1);
+    cumvli::free<float>(v2);
+}
+
+void
+CumvliTest::testCopyv_d2h()
+{
+    size_t const len = 1234;
+
+    float * v1 = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v1);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(v1, i, float(i));
+    }
+
+    float * v2 = matvecli::allocv<float>(len);
+    CPPUNIT_ASSERT(v2);
+    cumvli::copyv_d2h<float>(v1, v2, len);
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(matvecli::getelv<float>(v2, i) == i);
+    }
+
+    cumvli::free<float>(v1);
+    matvecli::free<float>(v2);
+}
+
+void
+CumvliTest::testCopym_h2d()
+{
+    size_t const rows = 123, cols = 456;
+
+    size_t stride1 = 0;
+    float * m1 = matvecli::allocm<float>(rows, cols, stride1);
+    CPPUNIT_ASSERT(m1 && stride1 >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            matvecli::setelm<float>(m1, stride1, r, c, float(i));
+        }
+    }
+
+    size_t stride2 = 0;
+    float * m2 = cumvli::allocm<float>(rows, cols, stride2);
+    CPPUNIT_ASSERT(m2 && stride2 >= cols);
+    cumvli::copym_h2d<float>(m1, stride1, m2, stride2, rows, cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            CPPUNIT_ASSERT(cumvli::getelm<float>(m2, stride2, r, c) == i);
+        }
+    }
+
+    matvecli::free<float>(m1);
+    cumvli::free<float>(m2);
+}
+
+void
+CumvliTest::testCopym_d2h()
+{
+    size_t const rows = 123, cols = 456;
+
+    size_t stride1 = 0;
+    float * m1 = cumvli::allocm<float>(rows, cols, stride1);
+    CPPUNIT_ASSERT(m1 && stride1 >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(m1, stride1, r, c, float(i));
+        }
+    }
+
+    size_t stride2 = 0;
+    float * m2 = matvecli::allocm<float>(rows, cols, stride2);
+    CPPUNIT_ASSERT(m2 && stride2 >= cols);
+    cumvli::copym_d2h<float>(m1, stride1, m2, stride2, rows, cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            CPPUNIT_ASSERT(matvecli::getelm<float>(m2, stride2, r, c) == i);
+        }
+    }
+
+    cumvli::free<float>(m1);
+    matvecli::free<float>(m2);
+}
+
+void
+CumvliTest::testAxpy()
+{
+    size_t const len = 1234;
+    float const alpha = 5;
+
+    float * x = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(x);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(x, i, float(i));
+    }
+
+    float * y = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(y);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(y, i, float(len - i));
+    }
+
+    cumvli::axpy<float>(x, len, y, alpha);
+
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(y, i) == alpha * i + (len - i));
+    }
+
+    cumvli::free<float>(x);
+    cumvli::free<float>(y);
+}
+
+void
+CumvliTest::testGemv()
+{
+    {
+        size_t const rows = 3, cols = 5;
+
+        size_t stride = 0;
+        float * A = cumvli::allocm<float>(rows, cols, stride);
+        CPPUNIT_ASSERT(A && stride >= cols);
+        for (size_t r = 0, i = 0; r < rows; ++r) {
+            for (size_t c = 0; c < cols; ++c, ++i) {
+                cumvli::setelm<float>(A, stride, r, c, float(i));
+            }
+        }
+
+        float * x = cumvli::allocv<float>(cols);
+        CPPUNIT_ASSERT(x);
+        for (size_t i = 0; i < cols; ++i) {
+            cumvli::setelv<float>(x, i, float(i));
+        }
+
+        float * y = cumvli::allocv<float>(rows);
+        CPPUNIT_ASSERT(y);
+        for (size_t i = 0; i < rows; ++i) {
+            cumvli::setelv<float>(y, i, float(i));
+        }
+
+        float * z = cumvli::allocv<float>(rows);
+        CPPUNIT_ASSERT(z);
+        cumvli::zerov<float>(z, rows);
+
+        cumvli::gemv<float>(A, stride, rows, cols, x, cols, y, rows, z);
+        float const z2[] = { 30, 81, 132 };
+        for (size_t i = 0; i < rows; ++i) {
+            CPPUNIT_ASSERT(cumvli::getelv<float>(z, i) == z2[i]);
+        }
+
+        cumvli::gemv<float,'n'>(A, stride, rows, cols, x, cols, y, 1, 1);
+        float const y2[] = { 30, 81, 132 };
+        for (size_t i = 0; i < rows; ++i) {
+            CPPUNIT_ASSERT(cumvli::getelv<float>(y, i) == y2[i]);
+        }
+
+        cumvli::gemv<float,'t'>(A, stride, rows, cols, y, rows, x, 1, 1);
+        float const x2[] = { 1725, 1969, 2213, 2457, 2701 };
+        for (size_t i = 0; i < cols; ++i) {
+            CPPUNIT_ASSERT(cumvli::getelv<float>(x, i) == x2[i]);
+        }
+
+        cumvli::free<float>(A);
+        cumvli::free<float>(x);
+        cumvli::free<float>(y);
+        cumvli::free<float>(z);
+    }
+    {
+        matvecli::randreseed();
+
+        size_t const rows  = 300;
+        size_t const cols  = 150;
+        float  const sigma = 1;
+
+        size_t h_strideA = 0;
+        float * h_A = matvecli::allocm<float>(rows, cols, h_strideA);
+        matvecli::randm<float>(h_A, h_strideA, rows, cols, sigma);
+
+        float * h_x = matvecli::allocv<float>(cols);
+        matvecli::randv<float>(h_x, cols, sigma);
+
+        float * h_y = matvecli::allocv<float>(rows);
+        matvecli::randv<float>(h_y, rows, sigma);
+
+        float * h_z = matvecli::allocv<float>(rows);
+        matvecli::randv<float>(h_z, rows, sigma);
+
+        size_t d_strideA = 0;
+        float * d_A = cumvli::allocm<float>(rows, cols, d_strideA);
+        cumvli::copym_h2d<float>(h_A, h_strideA, d_A, d_strideA, rows, cols);
+
+        float * d_x = cumvli::allocv<float>(cols);
+        cumvli::copyv_h2d<float>(h_x, d_x, cols);
+
+        float * d_y = cumvli::allocv<float>(rows);
+        cumvli::copyv_h2d<float>(h_y, d_y, rows);
+
+        float * d_z = cumvli::allocv<float>(rows);
+        cumvli::copyv_h2d<float>(h_z, d_z, rows);
+
+        //for (size_t r = 0; r < rows; ++r) {
+        //    for (size_t c = 0; c < cols; ++c) {
+        //        CPPUNIT_ASSERT(
+        //            matvecli::getelm<float>(h_A, h_strideA, r, c) >= -sigma &&
+        //            matvecli::getelm<float>(h_A, h_strideA, r, c) <=  sigma);
+        //        CPPUNIT_ASSERT(
+        //            cumvli::getelm<float>(d_A, d_strideA, r, c) >= -sigma &&
+        //            cumvli::getelm<float>(d_A, d_strideA, r, c) <=  sigma);
+        //        CPPUNIT_ASSERT(
+        //            matvecli::getelv<float>(h_x, c) >= -sigma &&
+        //            matvecli::getelv<float>(h_x, c) <=  sigma);
+        //        CPPUNIT_ASSERT(
+        //            cumvli::getelv<float>(d_x, c) >= -sigma &&
+        //            cumvli::getelv<float>(d_x, c) <=  sigma);
+        //    }
+        //    CPPUNIT_ASSERT(
+        //        matvecli::getelv<float>(h_y, r) >= -sigma &&
+        //        matvecli::getelv<float>(h_y, r) <=  sigma);
+        //    CPPUNIT_ASSERT(
+        //        cumvli::getelv<float>(d_y, r) >= -sigma &&
+        //        cumvli::getelv<float>(d_y, r) <=  sigma);
+        //    CPPUNIT_ASSERT(
+        //        matvecli::getelv<float>(h_z, r) >= -sigma &&
+        //        matvecli::getelv<float>(h_z, r) <=  sigma);
+        //    CPPUNIT_ASSERT(
+        //        cumvli::getelv<float>(d_z, r) >= -sigma &&
+        //        cumvli::getelv<float>(d_z, r) <=  sigma);
+        //}
+
+        matvecli::gemv<float>(h_A, h_strideA, rows, cols, h_x, cols, h_z, rows, h_y);
+        cumvli::gemv<float>(d_A, d_strideA, rows, cols, d_x, cols, d_z, rows, d_y);
+
+        for (size_t i = 0; i < rows; ++i) {
+            CPPUNIT_ASSERT_DOUBLES_EQUAL(
+                matvecli::getelv<float>(h_y, i),
+                cumvli::getelv<float>(d_y, i),
+                100 * mathli::eps<float>());
+       }
+
+        cumvli::free<float>(d_A);
+        cumvli::free<float>(d_x);
+        cumvli::free<float>(d_y);
+        cumvli::free<float>(d_z);
+
+        matvecli::free<float>(h_A);
+        matvecli::free<float>(h_x);
+        matvecli::free<float>(h_y);
+        matvecli::free<float>(h_z);
+    }
+}
+
+void
+CumvliTest::testGer()
+{
+    size_t const rows = 5, cols = 3;
+
+    float * x = cumvli::allocv<float>(rows);
+    CPPUNIT_ASSERT(x);
+    for (size_t i = 0; i < rows; ++i) {
+        cumvli::setelv<float>(x, i, float(i));
+    }
+
+    float * y = cumvli::allocv<float>(cols);
+    CPPUNIT_ASSERT(y);
+    for (size_t i = 0; i < cols; ++i) {
+        cumvli::setelv<float>(y, i, float(i + 1));
+    }
+
+    size_t stride = 0;
+    float * A = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(A && stride >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(A, stride, r, c, float(i));
+        }
+    }
+
+    cumvli::ger<float>(x, rows, y, cols, A, stride, 3);
+
+    float const A2[] = { 0, 1, 2, 6, 10, 14, 12, 19, 26, 18, 28, 38, 24, 37, 50 };
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            CPPUNIT_ASSERT(cumvli::getelm<float>(A, stride, r, c) == A2[i]);
+        }
+    }
+
+    cumvli::free<float>(x);
+    cumvli::free<float>(y);
+    cumvli::free<float>(A);
+}
+
+void
+CumvliTest::testAddv()
+{
+    size_t const len = 1234;
+
+    float * x = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(x);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(x, i, float(i));
+    }
+
+    float * y = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(y);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(y, i, float(i));
+    }
+
+    cumvli::addv<float>(x, y, len);
+
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(x, i) == (i + i));
+    }
+
+    cumvli::free<float>(x);
+    cumvli::free<float>(y);
+}
+
+void
+CumvliTest::testMulmm()
+{
+    // Test cumvli::mulmm<float,'n','n'>(...)
+    {
+        size_t const rowsA = 2, colsA = 3;
+        float const h_A[] = { 1, 2, 3, 4, 5, 6 };
+        CNNPLUS_STATIC_ASSERT(countof(h_A) == rowsA * colsA, INVALID_SIZE);
+
+        size_t const rowsB = 3, colsB = 4;
+        float const h_B[] = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 };
+        CNNPLUS_STATIC_ASSERT(countof(h_B) == rowsB * colsB, INVALID_SIZE);
+
+        size_t const rowsC = rowsA, colsC = colsB;
+        float const h_C[] = { 74, 80, 86, 92, 173, 188, 203, 218 };
+        CNNPLUS_STATIC_ASSERT(countof(h_C) == rowsC * colsC, INVALID_SIZE);
+
+        size_t strideA = 0;
+        float * d_A = cumvli::allocm<float>(rowsA, colsB, strideA);
+        CPPUNIT_ASSERT(d_A && strideA >= colsA);
+        cumvli::copym_h2d<float>(h_A, colsA, d_A, strideA, rowsA, colsA);
+        for (size_t r = 0; r < rowsA; ++r) {
+            for (size_t c = 0; c < colsA; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_A, strideA, r, c) == h_A[r * colsA + c]);
+            }
+        }
+
+        size_t strideB = 0;
+        float * d_B = cumvli::allocm<float>(rowsB, colsB, strideB);
+        CPPUNIT_ASSERT(d_B && strideB >= colsB);
+        cumvli::copym_h2d<float>(h_B, colsB, d_B, strideB, rowsB, colsB);
+        for (size_t r = 0; r < rowsB; ++r) {
+            for (size_t c = 0; c < colsB; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_B, strideB, r, c) == h_B[r * colsB + c]);
+            }
+        }
+
+        size_t strideC = 0;
+        float * d_C = cumvli::allocm<float>(rowsC, colsC, strideC);
+        CPPUNIT_ASSERT(d_C && strideC >= colsC);
+        cumvli::mulmm<float,'n','n'>(d_A, strideA, rowsA, colsA, d_B, strideB, rowsB, colsB, d_C, strideC);
+        for (size_t r = 0; r < rowsC; ++r) {
+            for (size_t c = 0; c < colsC; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_C, strideC, r, c) == h_C[r * colsC + c]);
+            }
+        }
+
+        cumvli::free<float>(d_A);
+        cumvli::free<float>(d_B);
+        cumvli::free<float>(d_C);
+    }
+
+    // Test cumvli::mulmm<float,'n','t'>(...)
+    {
+        size_t const rowsA = 2, colsA = 3;
+        float const h_A[] = { 1, 2, 3, 4, 5, 6 };
+        CNNPLUS_STATIC_ASSERT(countof(h_A) == rowsA * colsA, INVALID_SIZE);
+
+        size_t const rowsB = 4, colsB = 3;
+        float const h_B[] = { 7, 11, 15, 8, 12, 16, 9, 13, 17, 10, 14, 18 };
+        CNNPLUS_STATIC_ASSERT(countof(h_B) == rowsB * colsB, INVALID_SIZE);
+
+        size_t const rowsC = rowsA, colsC = rowsB;
+        float const h_C[] = { 74, 80, 86, 92, 173, 188, 203, 218 };
+        CNNPLUS_STATIC_ASSERT(countof(h_C) == rowsC * colsC, INVALID_SIZE);
+
+        size_t strideA = 0;
+        float * d_A = cumvli::allocm<float>(rowsA, colsB, strideA);
+        CPPUNIT_ASSERT(d_A && strideA >= colsA);
+        cumvli::copym_h2d<float>(h_A, colsA, d_A, strideA, rowsA, colsA);
+        for (size_t r = 0; r < rowsA; ++r) {
+            for (size_t c = 0; c < colsA; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_A, strideA, r, c) == h_A[r * colsA + c]);
+            }
+        }
+
+        size_t strideB = 0;
+        float * d_B = cumvli::allocm<float>(rowsB, colsB, strideB);
+        CPPUNIT_ASSERT(d_B && strideB >= colsB);
+        cumvli::copym_h2d<float>(h_B, colsB, d_B, strideB, rowsB, colsB);
+        for (size_t r = 0; r < rowsB; ++r) {
+            for (size_t c = 0; c < colsB; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_B, strideB, r, c) == h_B[r * colsB + c]);
+            }
+        }
+
+        size_t strideC = 0;
+        float * d_C = cumvli::allocm<float>(rowsC, colsC, strideC);
+        CPPUNIT_ASSERT(d_C && strideC >= colsC);
+        cumvli::mulmm<float,'n','t'>(d_A, strideA, rowsA, colsA, d_B, strideB, rowsB, colsB, d_C, strideC);
+        for (size_t r = 0; r < rowsC; ++r) {
+            for (size_t c = 0; c < colsC; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_C, strideC, r, c) == h_C[r * colsC + c]);
+            }
+        }
+
+        cumvli::free<float>(d_A);
+        cumvli::free<float>(d_B);
+        cumvli::free<float>(d_C);
+    }
+
+    // Test cumvli::mulmm<float,'t','n'>(...)
+    {
+        size_t const rowsA = 3, colsA = 2;
+        float const h_A[] = { 1, 4, 2, 5, 3, 6 };
+        CNNPLUS_STATIC_ASSERT(countof(h_A) == rowsA * colsA, INVALID_SIZE);
+
+        size_t const rowsB = 3, colsB = 4;
+        float const h_B[] = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 };
+        CNNPLUS_STATIC_ASSERT(countof(h_B) == rowsB * colsB, INVALID_SIZE);
+
+        size_t const rowsC = colsA, colsC = colsB;
+        float const h_C[] = { 74, 80, 86, 92, 173, 188, 203, 218 };
+        CNNPLUS_STATIC_ASSERT(countof(h_C) == rowsC * colsC, INVALID_SIZE);
+
+        size_t strideA = 0;
+        float * d_A = cumvli::allocm<float>(rowsA, colsB, strideA);
+        CPPUNIT_ASSERT(d_A && strideA >= colsA);
+        cumvli::copym_h2d<float>(h_A, colsA, d_A, strideA, rowsA, colsA);
+        for (size_t r = 0; r < rowsA; ++r) {
+            for (size_t c = 0; c < colsA; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_A, strideA, r, c) == h_A[r * colsA + c]);
+            }
+        }
+
+        size_t strideB = 0;
+        float * d_B = cumvli::allocm<float>(rowsB, colsB, strideB);
+        CPPUNIT_ASSERT(d_B && strideB >= colsB);
+        cumvli::copym_h2d<float>(h_B, colsB, d_B, strideB, rowsB, colsB);
+        for (size_t r = 0; r < rowsB; ++r) {
+            for (size_t c = 0; c < colsB; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_B, strideB, r, c) == h_B[r * colsB + c]);
+            }
+        }
+
+        size_t strideC = 0;
+        float * d_C = cumvli::allocm<float>(rowsC, colsC, strideC);
+        CPPUNIT_ASSERT(d_C && strideC >= colsC);
+        cumvli::mulmm<float,'t','n'>(d_A, strideA, rowsA, colsA, d_B, strideB, rowsB, colsB, d_C, strideC);
+        for (size_t r = 0; r < rowsC; ++r) {
+            for (size_t c = 0; c < colsC; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_C, strideC, r, c) == h_C[r * colsC + c]);
+            }
+        }
+
+        cumvli::free<float>(d_A);
+        cumvli::free<float>(d_B);
+        cumvli::free<float>(d_C);
+    }
+
+    // Test cumvli::mulmm<float,'t','t'>(...)
+    {
+        size_t const rowsA = 3, colsA = 2;
+        float const h_A[] = { 1, 4, 2, 5, 3, 6 };
+        CNNPLUS_STATIC_ASSERT(countof(h_A) == rowsA * colsA, INVALID_SIZE);
+
+        size_t const rowsB = 4, colsB = 3;
+        float const h_B[] = { 7, 11, 15, 8, 12, 16, 9, 13, 17, 10, 14, 18 };
+        CNNPLUS_STATIC_ASSERT(countof(h_B) == rowsB * colsB, INVALID_SIZE);
+
+        size_t const rowsC = colsA, colsC = rowsB;
+        float const h_C[] = { 74, 80, 86, 92, 173, 188, 203, 218 };
+        CNNPLUS_STATIC_ASSERT(countof(h_C) == rowsC * colsC, INVALID_SIZE);
+
+        size_t strideA = 0;
+        float * d_A = cumvli::allocm<float>(rowsA, colsB, strideA);
+        CPPUNIT_ASSERT(d_A && strideA >= colsA);
+        cumvli::copym_h2d<float>(h_A, colsA, d_A, strideA, rowsA, colsA);
+        for (size_t r = 0; r < rowsA; ++r) {
+            for (size_t c = 0; c < colsA; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_A, strideA, r, c) == h_A[r * colsA + c]);
+            }
+        }
+
+        size_t strideB = 0;
+        float * d_B = cumvli::allocm<float>(rowsB, colsB, strideB);
+        CPPUNIT_ASSERT(d_B && strideB >= colsB);
+        cumvli::copym_h2d<float>(h_B, colsB, d_B, strideB, rowsB, colsB);
+        for (size_t r = 0; r < rowsB; ++r) {
+            for (size_t c = 0; c < colsB; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_B, strideB, r, c) == h_B[r * colsB + c]);
+            }
+        }
+
+        size_t strideC = 0;
+        float * d_C = cumvli::allocm<float>(rowsC, colsC, strideC);
+        CPPUNIT_ASSERT(d_C && strideC >= colsC);
+        cumvli::mulmm<float,'t','t'>(d_A, strideA, rowsA, colsA, d_B, strideB, rowsB, colsB, d_C, strideC);
+        for (size_t r = 0; r < rowsC; ++r) {
+            for (size_t c = 0; c < colsC; ++c) {
+                CPPUNIT_ASSERT(cumvli::getelm<float>(d_C, strideC, r, c) == h_C[r * colsC + c]);
+            }
+        }
+
+        cumvli::free<float>(d_A);
+        cumvli::free<float>(d_B);
+        cumvli::free<float>(d_C);
+    }
+}
+
+void
+CumvliTest::testSumrow()
+{
+    {
+        size_t const rows = 5, cols = 7;
+
+        size_t stride = 0;
+        float * A = cumvli::allocm<float>(rows, cols, stride);
+        CPPUNIT_ASSERT(A && stride >= cols);
+        for (size_t r = 0, i = 0; r < rows; ++r) {
+            for (size_t c = 0; c < cols; ++c, ++i) {
+                cumvli::setelm<float>(A, stride, r, c, float(i));
+            }
+        }
+
+        float * x = cumvli::allocv<float>(rows);
+
+        cumvli::sumrow<float>(A, stride, x, rows, cols);
+
+        float const x2[] = { 21, 70, 119, 168, 217 };
+        for (size_t i = 0; i < rows; ++i) {
+            CPPUNIT_ASSERT(cumvli::getelv<float>(x, i) == x2[i]);
+        }
+
+        cumvli::free<float>(A);
+        cumvli::free<float>(x);
+    }
+    {
+        size_t const rows = 9, cols = 9999;
+
+        size_t stride = 0;
+        float * A = cumvli::allocm<float>(rows, cols, stride);
+        CPPUNIT_ASSERT(A && stride >= cols);
+        for (size_t r = 0; r < rows; ++r) {
+            for (size_t c = 0; c < cols; ++c) {
+                cumvli::setelm<float>(A, stride, r, c, float(r));
+            }
+        }
+
+        float * x = cumvli::allocv<float>(rows);
+
+        cumvli::sumrow<float>(A, stride, x, rows, cols);
+
+        for (size_t i = 0; i < rows; ++i) {
+            CPPUNIT_ASSERT(cumvli::getelv<float>(x, i) == (i * cols));
+        }
+
+        cumvli::free<float>(A);
+        cumvli::free<float>(x);
+    }
+}
+
+void
+CumvliTest::testSumrowacc()
+{
+    size_t const rows = 5, cols = 7;
+
+    size_t stride = 0;
+    float * A = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(A && stride >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(A, stride, r, c, float(i));
+        }
+    }
+
+    float * x = cumvli::allocv<float>(rows);
+    for (size_t i = 0; i < rows; ++i) {
+        cumvli::setelv<float>(x, i, float(i));
+    }
+
+    cumvli::sumrowacc<float>(A, stride, x, rows, cols);
+
+    float const x2[] = { 21, 71, 121, 171, 221 };
+    for (size_t i = 0; i < rows; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(x, i) == x2[i]);
+    }
+
+    cumvli::free<float>(A);
+    cumvli::free<float>(x);
+}
+
+void
+CumvliTest::testPmulmm()
+{
+    size_t const rows = 44, cols = 55;
+
+    size_t strideA = 0;
+    float * A = cumvli::allocm<float>(rows, cols, strideA);
+    CPPUNIT_ASSERT(A && strideA >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(A, strideA, r, c, float(i));
+        }
+    }
+
+    size_t strideB = 0;
+    float * B = cumvli::allocm<float>(rows, cols, strideB);
+    CPPUNIT_ASSERT(B && strideB >= cols);
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            cumvli::setelm<float>(B, strideB, r, c, float(i));
+        }
+    }
+
+    cumvli::pmulmm<float>(A, strideA, B, strideB, rows, cols);
+
+    for (size_t r = 0, i = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c, ++i) {
+            CPPUNIT_ASSERT(cumvli::getelm<float>(A, strideA, r, c) == (i * i));
+        }
+    }
+
+    cumvli::free<float>(A);
+    cumvli::free<float>(B);
+}
+
+void
+CumvliTest::testSetv()
+{
+    size_t const len = 1234;
+    float * v = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v);
+    cumvli::setv<float>(v, len, 3);
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(v, i) == 3);
+    }
+    cumvli::free<float>(v);
+}
+
+void
+CumvliTest::testSetm()
+{
+    size_t const rows = 123, cols = 456;
+    size_t stride = 0;
+    float * m = cumvli::allocm<float>(rows, cols, stride);
+    CPPUNIT_ASSERT(m && stride >= cols);
+    cumvli::setm<float>(m, stride, rows, cols, 3);
+    for (size_t r = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c) {
+            CPPUNIT_ASSERT(cumvli::getelm<float>(m, stride, r, c) == 3);
+        }
+    }
+    cumvli::free<float>(m);
+}
+
+void
+CumvliTest::testMulv()
+{
+    size_t const len = 1234;
+
+    float * x = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(x);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(x, i, float(i));
+    }
+
+    float * y = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(y);
+    for (size_t i = 0; i < len; ++i) {
+        cumvli::setelv<float>(y, i, float(i));
+    }
+
+    float * z = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(z);
+    cumvli::zerov<float>(z, len);
+
+    cumvli::mulv<float>(y, x, z, len);
+    cumvli::mulv<float>(y, x, len);
+
+    for (size_t i = 0; i < len; ++i) {
+        CPPUNIT_ASSERT(cumvli::getelv<float>(y, i) == (i * i));
+        CPPUNIT_ASSERT(cumvli::getelv<float>(z, i) == (i * i));
+    }
+
+    cumvli::free<float>(x);
+    cumvli::free<float>(y);
+    cumvli::free<float>(z);
+}
+
+void
+CumvliTest::testAbsmaxv()
+{
+    float const v2[] = { 3, 5, 1, 9, 4, 2, 0, 6 };
+    size_t const len = countof(v2);
+
+    float * v = cumvli::allocv<float>(len);
+    CPPUNIT_ASSERT(v);
+    cumvli::copyv_h2d<float>(v2, v, len);
+    CPPUNIT_ASSERT(cumvli::absmaxv<float>(v, len) == 9);
+    cumvli::free<float>(v);
+}
+
+int test_cumvli(int, char*[])
+{
+    CppUnit::TextTestRunner runner;
+    runner.setOutputter(new CppUnit::CompilerOutputter(&runner.result(), std::cerr));
+    runner.addTest(CumvliTest::suite());
+    return runner.run() ? 0 : 1;
+}

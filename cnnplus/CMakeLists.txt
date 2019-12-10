@@ -1,0 +1,43 @@
+#******************************************************************************
+#
+# \file   CMakeLists.txt
+# \author Daniel Strigl, Klaus Kofler
+# \date   Jun 01 2009
+#
+# $Id: CMakeLists.txt 1396 2009-06-04 06:33:11Z dast $
+#
+#******************************************************************************
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+  set(CNNPLUS_FLAGS "-Woverloaded-virtual")# -Wold-style-cast")
+endif()
+
+site_name(CNNPLUS_SITE_NAME)
+
+string(TOUPPER ${CMAKE_BUILD_TYPE} TMP)
+set(CNNPLUS_CXX_FLAGS
+  "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${TMP}} ${CNNPLUS_FLAGS}"
+)
+
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/cimg
+)
+
+include(src/CMakeLists.txt)
+foreach(s ${SOURCES})
+  set(srcFile ${CMAKE_CURRENT_SOURCE_DIR}/src/${s})
+  set_property(SOURCE ${srcFile} PROPERTY COMPILE_FLAGS ${CNNPLUS_FLAGS})
+  list(APPEND LIB_SOURCES ${srcFile})
+endforeach()
+
+if(CNNPLUS_USE_CUDA)
+  include(src/cuda/CMakeLists.txt)
+  foreach(s ${SOURCES})
+    set(srcFile ${CMAKE_CURRENT_SOURCE_DIR}/src/cuda/${s})
+    list(APPEND LIB_SOURCES ${srcFile})
+  endforeach()
+  cuda_add_library(${CMAKE_PROJECT_NAME} ${LIB_SOURCES})
+else()
+  add_library(${CMAKE_PROJECT_NAME} ${LIB_SOURCES})
+endif()

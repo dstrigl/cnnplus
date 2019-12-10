@@ -1,0 +1,34 @@
+/**************************************************************************//**
+ *
+ * \file   bench_mlpnet.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jun 07 2009
+ *
+ * $Id: bench_mlpnet.cc 1722 2009-07-12 19:08:32Z dast $
+ *
+ *****************************************************************************/
+
+#include <iostream>
+#include "fulllayernet.hh"
+#ifdef CNNPLUS_USE_CUDA
+#include "cufulllayernet.hh"
+#endif // CNNPLUS_USE_CUDA
+#include "propsbench.hh"
+using namespace cnnplus;
+
+int main(int argc, char *argv[])
+{
+    for (size_t i = 1; i <= 10; ++i)
+    {
+        FullLayerNet<float> net(784, 3, 500 * i, 150 * i, 10);
+        double const t1 = PropsBench().run(net);
+        std::cout << net.toString() << ": " << t1 << " sec" << std::endl;
+#ifdef CNNPLUS_USE_CUDA
+        CuFullLayerNet<float> cuNet(784, 3, 500 * i, 150 * i, 10);
+        double const t2 = PropsBench().run(cuNet);
+        std::cout << cuNet.toString() << ": " << t2 << " sec" << std::endl;
+        std::cout << "CPU/GPU: " << (t1 / t2) << std::endl << std::endl;
+#endif // CNNPLUS_USE_CUDA
+    }
+    return 0;
+}

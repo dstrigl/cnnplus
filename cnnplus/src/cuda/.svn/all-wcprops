@@ -1,0 +1,107 @@
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/CUDA/!svn/ver/3560/cnnplus/cnnplus/src/cuda
+END
+cufulllayernet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/src/cuda/cufulllayernet.cc
+END
+cumvli.cc
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/3560/cnnplus/cnnplus/src/cuda/cumvli.cc
+END
+cumomentumtrainer.cu
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/CUDA/!svn/ver/3558/cnnplus/cnnplus/src/cuda/cumomentumtrainer.cu
+END
+cusublayer.cu
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/3558/cnnplus/cnnplus/src/cuda/cusublayer.cu
+END
+curproptrainer.cu
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/3558/cnnplus/cnnplus/src/cuda/curproptrainer.cu
+END
+cusquasher.cu
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/3558/cnnplus/cnnplus/src/cuda/cusquasher.cu
+END
+cujahrernet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/src/cuda/cujahrernet.cc
+END
+cuconvlayer.cu
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/3558/cnnplus/cnnplus/src/cuda/cuconvlayer.cu
+END
+cusimardnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/src/cuda/cusimardnet.cc
+END
+cuphungnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/src/cuda/cuphungnet.cc
+END
+cumvli.cu
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/3560/cnnplus/cnnplus/src/cuda/cumvli.cu
+END
+culenet5.cc
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1962/cnnplus/cnnplus/src/cuda/culenet5.cc
+END
+cugarcianet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/2010/cnnplus/cnnplus/src/cuda/cugarcianet.cc
+END
+culolnet.cc
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/src/cuda/culolnet.cc
+END
+cugradienttest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/1726/cnnplus/cnnplus/src/cuda/cugradienttest.cc
+END
+cufulllayer.cc
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/src/cuda/cufulllayer.cc
+END
+CMakeLists.txt
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/2007/cnnplus/cnnplus/src/cuda/CMakeLists.txt
+END

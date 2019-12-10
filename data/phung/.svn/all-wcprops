@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/CUDA/!svn/ver/2725/cnnplus/data/phung
+END
+train_data.mat
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/1940/cnnplus/data/phung/train_data.mat
+END
+test_data.mat
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/1940/cnnplus/data/phung/test_data.mat
+END
+train_data2.mat
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/2725/cnnplus/data/phung/train_data2.mat
+END
+test_data2.mat
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/2725/cnnplus/data/phung/test_data2.mat
+END

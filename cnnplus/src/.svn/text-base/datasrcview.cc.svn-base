@@ -1,0 +1,155 @@
+/**************************************************************************//**
+ *
+ * \file   datasrcview.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Apr 25 2009
+ *
+ * $Id$
+ *
+ * \brief  Implementation of cnnplus::DataSrcView.
+ *
+ *****************************************************************************/
+
+#include "datasrcview.hh"
+#include "datasource.hh"
+#include "error.hh"
+#include "matvecli.hh"
+#include "mathli.hh"
+#include "cimg.hh"
+#include <sstream>
+#include <string>
+
+CNNPLUS_NS_BEGIN
+
+template<typename T> void
+DataSrcView::run(DataSource<T> & ds)
+{
+    T * out = matvecli::allocv<T>(ds.sizeOut());
+    unsigned char * data = static_cast<unsigned char *>(malloc(ds.sizeOut()));
+    {
+        CImgDisplay disp(
+            static_cast<unsigned int>(ds.sizePattern().width()  * zoomFactor_ + 0.5),
+            static_cast<unsigned int>(ds.sizePattern().height() * zoomFactor_ + 0.5),
+            ds.toString().c_str());
+
+        T const scale = 255 / (ds.dataRangeMax() - ds.dataRangeMin());
+        T const shift = -ds.dataRangeMin();
+        ds.rewind();
+
+        for (int i = 1; i <= ds.size(); ds.next(), ++i)
+        {
+            int const lbl = ds.fprop(out);
+
+            for (size_t j = 0; j < ds.sizeOut(); ++j)
+                data[j] = static_cast<unsigned char>((out[j] + shift) * scale);
+
+            CImg<unsigned char> image(
+                data, ds.sizePattern().width(), ds.sizePattern().height());
+            image.resize(disp, 3);
+            {
+                std::stringstream ss;
+                ss << lbl;
+                unsigned char const white[] = { 255, 255, 255 };
+                image.draw_text(2, 0, ss.str().c_str(), white);
+            }
+            disp.display(image);
+            disp.flush();
+
+            if (delay_ > 0) {
+                disp.wait(delay_);
+            }
+            else {
+                while (!disp.is_closed() && !disp.button() && !disp.released_key())
+                {}
+            }
+            if (disp.is_closed() || disp.released_key() == cimg::keyESC)
+                break;
+        }
+    }
+    free(data);
+    matvecli::free<T>(out);
+}
+
+template<typename T> void
+DataSrcView::run(DataSource<T> & dsA, DataSource<T> & dsB)
+{
+    if (dsA.sizeOut() != dsB.sizeOut() || dsA.sizePattern() != dsB.sizePattern())
+        throw ParameterError("Data sources doesn't match.");
+
+    T * out = matvecli::allocv<T>(dsA.sizeOut());
+    unsigned char * data = static_cast<unsigned char *>(malloc(dsA.sizeOut()));
+    {
+        std::string const title = dsA.toString() + "; " + dsB.toString();
+        CImgDisplay disp(
+            static_cast<unsigned int>(dsA.sizePattern().width()  * zoomFactor_ + 0.5) * 2,
+            static_cast<unsigned int>(dsA.sizePattern().height() * zoomFactor_ + 0.5) * 1,
+            title.c_str());
+
+        T const scaleA = 255 / (dsA.dataRangeMax() - dsA.dataRangeMin());
+        T const shiftA = -dsA.dataRangeMin();
+
+        T const scaleB = 255 / (dsB.dataRangeMax() - dsB.dataRangeMin());
+        T const shiftB = -dsB.dataRangeMin();
+
+        dsA.rewind();
+        dsB.rewind();
+
+        for (int i = 1;
+            i <= mathli::min(dsA.size(), dsB.size());
+            dsA.next(), dsB.next(), ++i)
+        {
+            int const lblA = dsA.fprop(out);
+            for (size_t j = 0; j < dsA.sizeOut(); ++j)
+                data[j] = static_cast<unsigned char>((out[j] + shiftA) * scaleA);
+            CImg<unsigned char> imageA(
+                data, dsA.sizePattern().width(), dsA.sizePattern().height());
+
+            int const lblB = dsB.fprop(out);
+            for (size_t j = 0; j < dsB.sizeOut(); ++j)
+                data[j] = static_cast<unsigned char>((out[j] + shiftB) * scaleB);
+            CImg<unsigned char> imageB(
+                data, dsB.sizePattern().width(), dsB.sizePattern().height());
+
+            imageA.resize(CImg<unsigned char>(disp.width() / 2, disp.height()), 3);
+            {
+                std::stringstream ss;
+                ss << lblA;
+                unsigned char const white[] = { 255, 255, 255 };
+                imageA.draw_text(2, 0, ss.str().c_str(), white);
+            }
+            imageB.resize(CImg<unsigned char>(disp.width() / 2, disp.height()), 3);
+            {
+                std::stringstream ss;
+                ss << lblB;
+                unsigned char const white[] = { 255, 255, 255 };
+                imageB.draw_text(2, 0, ss.str().c_str(), white);
+            }
+            disp.display(CImgList<unsigned char>(imageA, imageB));
+            disp.flush();
+
+            if (delay_ > 0) {
+                disp.wait(delay_);
+            }
+            else {
+                while (!disp.is_closed() && !disp.button() && !disp.released_key())
+                {}
+            }
+            if (disp.is_closed() || disp.released_key() == cimg::keyESC)
+                break;
+        }
+    }
+    free(data);
+    matvecli::free<T>(out);
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template void DataSrcView::run<float>(DataSource<float> & ds);
+template void DataSrcView::run<double>(DataSource<double> & ds);
+
+template void DataSrcView::run<float>(DataSource<float> & dsA, DataSource<float> & dsB);
+template void DataSrcView::run<double>(DataSource<double> & dsA, DataSource<double> & dsB);
+/*! @} */
+
+CNNPLUS_NS_END

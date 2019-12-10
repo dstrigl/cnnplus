@@ -1,0 +1,50 @@
+/**************************************************************************//**
+ *
+ * \file   propsbench.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jan 04 2009
+ *
+ * $Id$
+ *
+ * \brief  Header for cnnplus::PropsBench.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_PROPSBENCH_HH
+#define CNNPLUS_PROPSBENCH_HH
+
+#include "common.hh"
+
+CNNPLUS_NS_BEGIN
+
+template<typename T> class NeuralNet;
+
+//! Measure time for a number of fwd- and back-props of a neural-net
+/*! \see
+    Chellapilla K., Puri S., Simard P., "High Performance Convolutional
+    Neural Networks for Document Processing", 10th International Workshop
+    on Frontiers in Handwriting Recognition (IWFHR'2006) will be held in
+    La Baule, France on October 23-26, 2006.
+ */
+class PropsBench
+{
+public:
+    //! Ctr
+    /*! \param numRuns number of runs (fwd- and back-props)
+     */
+    PropsBench(size_t const numRuns = 1000) : numRuns_(numRuns)
+    {}
+    //! Runs the benchmark and returns the elapsed time (in sec)
+    /*! \param net the neural-net
+        \param withUpdate do also an update every run
+     */
+    template<typename T>
+    double run(NeuralNet<T> & net, bool withUpdate = false);
+
+private:
+    size_t const numRuns_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_PROPSBENCH_HH

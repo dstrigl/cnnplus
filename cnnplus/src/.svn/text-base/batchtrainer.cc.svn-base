@@ -1,0 +1,170 @@
+/**************************************************************************//**
+ *
+ * \file   batchtrainer.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Mar 07 2009
+ *
+ * $Id$
+ *
+ * \brief  Implementation of cnnplus::BatchTrainer.
+ *
+ *****************************************************************************/
+
+#include "batchtrainer.hh"
+#include "neuralnet.hh"
+#include "datasource.hh"
+#include "error.hh"
+#include "matvecli.hh"
+#include <sstream>
+#include <cstdio>
+
+CNNPLUS_NS_BEGIN
+
+template<typename T, class ErrFnc> bool
+BatchTrainer<T, ErrFnc>::Adapter::update(BatchTrainer<T, ErrFnc> & trainer,
+    DataSource<T> & ds, size_t const epoch, int & batchSize, T & eta)
+{
+    double errRate = 0;
+    T const error = trainer.test(ds, errRate);
+
+    printf("# epoch: %04d, error: %10.8f, error-rate: %8.4f%%\n",
+        epoch, error, errRate);
+    fflush(stdout);
+
+    return (epoch < maxEpochs_);
+}
+
+template<typename T, class ErrFnc>
+BatchTrainer<T, ErrFnc>::BatchTrainer(
+    NeuralNet<T> & net, int const batchSize, T const eta, Adapter & adapter)
+    : Trainer<T, ErrFnc>(net), adapter_(&adapter), delAdapter_(false),
+    batchSize_(batchSize), eta_(eta)
+{
+    if (batchSize <= 0)
+        throw ParameterError("batchSize", "must be greater zero.");
+    else if (eta <= 0)
+        throw ParameterError("eta", "must be greater zero.");
+}
+
+template<typename T, class ErrFnc>
+BatchTrainer<T, ErrFnc>::BatchTrainer(
+    NeuralNet<T> & net, int const batchSize, T const eta, size_t const maxEpochs)
+    : Trainer<T, ErrFnc>(net), adapter_(new Adapter(maxEpochs)), delAdapter_(true),
+    batchSize_(batchSize), eta_(eta)
+{
+    if (batchSize <= 0)
+        throw ParameterError("batchSize", "must be greater zero.");
+    else if (eta <= 0)
+        throw ParameterError("eta", "must be greater zero.");
+}
+
+template<typename T, class ErrFnc>
+BatchTrainer<T, ErrFnc>::BatchTrainer(NeuralNet<T> & net, T const eta, Adapter & adapter)
+    : Trainer<T, ErrFnc>(net), adapter_(&adapter), delAdapter_(false),
+    batchSize_(0), eta_(eta)
+{
+    if (eta <= 0)
+        throw ParameterError("eta", "must be greater zero.");
+}
+
+template<typename T, class ErrFnc>
+BatchTrainer<T, ErrFnc>::BatchTrainer(NeuralNet<T> & net, T const eta, size_t const maxEpochs)
+    : Trainer<T, ErrFnc>(net), adapter_(new Adapter(maxEpochs)), delAdapter_(true),
+    batchSize_(0), eta_(eta)
+{
+    if (eta <= 0)
+        throw ParameterError("eta", "must be greater zero.");
+}
+
+template<typename T, class ErrFnc>
+BatchTrainer<T, ErrFnc>::~BatchTrainer()
+{
+    if (delAdapter_) delete adapter_;
+}
+
+template<typename T, class ErrFnc> void
+BatchTrainer<T, ErrFnc>::train(DataSource<T> & ds)
+{
+    if (ds.sizeOut() != this->net_.sizeIn())
+        throw ParameterError("ds", "size doesn't match.");
+
+    // Reset gradients to zero
+    this->net_.reset();
+
+    // Set vector 'des_' to negative target value
+    if (this->net_.sizeOut() > 1)
+        matvecli::setv<T>(this->des_, this->net_.sizeOut(), this->targetVal_.NEG());
+
+    // Loop over epochs until 'adapter_->update(...)' returns 'false'
+    for (size_t epoch = 0; adapter_->update(*this, ds, epoch, batchSize_, eta_); ++epoch)
+    {
+        ds.shuffle();
+        ds.rewind();
+
+        // Loop over all patterns
+        for (int i = 1; i <= ds.size(); ds.next(), ++i)
+        {
+            // Read pattern and desired label from data source
+            int const desLbl = ds.fprop(this->in_);
+
+            // Compute neural-net output
+            this->net_.fprop(this->in_, this->out_);
+
+            // Compute error
+            if (this->net_.sizeOut() > 1) {
+                CNNPLUS_ASSERT(0 <= desLbl && desLbl < static_cast<int>(this->net_.sizeOut()));
+                this->des_[desLbl] = this->targetVal_.POS();
+                this->errFnc_.fprop(this->out_, this->des_);
+                this->des_[desLbl] = this->targetVal_.NEG();
+            }
+            else {
+                this->des_[0] = static_cast<T>(desLbl);
+                this->errFnc_.fprop(this->out_, this->des_);
+            }
+
+            // Backpropagate error through network
+            this->errFnc_.bprop(this->out_);
+            this->net_.bprop(NULL, this->out_, true);
+
+            // Updates weights and biases
+            if ((batchSize_ > 0 && i % batchSize_ == 0) || (i == ds.size())) {
+                this->net_.update(-eta_);
+                this->net_.reset();
+            }
+
+#ifdef CNNPLUS_PRINT_PROGRESS
+            printf("train %.2f%%\r", i * 100.0 / ds.size());
+            fflush(stdout);
+#endif // CNNPLUS_PRINT_PROGRESS
+        }
+#ifdef CNNPLUS_PRINT_PROGRESS
+        printf("             \r");
+        fflush(stdout);
+#endif // CNNPLUS_PRINT_PROGRESS
+    }
+}
+
+template<typename T, class ErrFnc> std::string
+BatchTrainer<T, ErrFnc>::toString() const
+{
+    std::stringstream ss;
+    ss << "BatchTrainer["
+        << this->errFnc_.toString()
+        << "; targetVal=("
+        << this->targetVal_.NEG() << ","
+        << this->targetVal_.POS() << ")"
+        << ", batchSize=" << batchSize_
+        << ", eta=" << eta_ << "]";
+    return ss.str();
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class BatchTrainer< float,  MeanSquaredError<float>  >;
+template class BatchTrainer< double, MeanSquaredError<double> >;
+template class BatchTrainer< float,  CrossEntropy<float>      >;
+template class BatchTrainer< double, CrossEntropy<double>     >;
+/*! @} */
+
+CNNPLUS_NS_END

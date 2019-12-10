@@ -1,0 +1,77 @@
+/**************************************************************************//**
+ *
+ * \file   momentumtrainer.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   May 12 2009
+ *
+ * $Id$
+ *
+ * \brief  Header for cnnplus::MomentumTrainer.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_MOMENTUMTRAINER_HH
+#define CNNPLUS_MOMENTUMTRAINER_HH
+
+#include "common.hh"
+#include "trainer.hh"
+#include "neuralnet.hh"
+#include <vector>
+
+CNNPLUS_NS_BEGIN
+
+//! Trainer for supervised learning with momentum term
+template< typename T, class ErrFnc = MeanSquaredError<T> >
+class MomentumTrainer : public Trainer<T, ErrFnc>
+{
+    void init();
+    void update();
+
+public:
+    //! \todo doc
+    class Adapter
+    {
+    public:
+        explicit Adapter(size_t maxEpochs = 1000) : maxEpochs_(maxEpochs)
+        {}
+        virtual ~Adapter() {}
+        virtual bool update(
+            MomentumTrainer<T, ErrFnc> & trainer,
+            DataSource<T> & ds, size_t epoch, int & batchSize, T & eta, T & alpha);
+    protected:
+        size_t const maxEpochs_;
+    };
+
+    //! Ctr
+    MomentumTrainer(NeuralNet<T> & net, int batchSize, T eta, T alpha, Adapter & adapter);
+    //! Ctr
+    MomentumTrainer(NeuralNet<T> & net, int batchSize, T eta, T alpha, size_t maxEpochs = 1000);
+    //! Ctr
+    MomentumTrainer(NeuralNet<T> & net, T eta, T alpha, Adapter & adapter);
+    //! Ctr
+    MomentumTrainer(NeuralNet<T> & net, T eta, T alpha, size_t maxEpochs = 1000);
+    //! Dtr
+    virtual ~MomentumTrainer();
+
+    virtual void train(DataSource<T> & ds);
+    virtual std::string toString() const;
+
+    int batchSize() const { return batchSize_; }
+    T eta() const { return eta_; }
+    T alpha() const { return alpha_; }
+
+private:
+    Adapter * adapter_;
+    bool const delAdapter_;
+    int batchSize_;
+    T eta_;
+    T alpha_;
+    typename NeuralNet<T>::TrainableParam trainableParam_;
+    std::vector<T *> deltaW_;
+    std::vector<size_t> strideDeltaW_;
+    std::vector<T *> deltaB_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_MOMENTUMTRAINER_HH

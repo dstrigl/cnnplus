@@ -1,0 +1,123 @@
+/**************************************************************************//**
+ *
+ * \file   subsetdatasrc.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   May 03 2009
+ *
+ * $Id$
+ *
+ * \brief  Implementation of cnnplus::SubsetDataSrc.
+ *
+ *****************************************************************************/
+
+#include "subsetdatasrc.hh"
+#include "error.hh"
+#include <algorithm>
+#include <sstream>
+
+CNNPLUS_NS_BEGIN
+
+template<typename T>
+SubsetDataSrc<T>::SubsetDataSrc(DataSource<T> & ds, int start, int size)
+    : DataSource<T>(ds.dataRangeMin(), ds.dataRangeMax(), size, 0),
+    ds_(ds), start_(start), idx_()
+{
+    if (start < 0 || size < 0 || start + size > ds.size())
+        throw ParameterError("Invalid input values.");
+
+    reset();
+}
+
+template<typename T> int
+SubsetDataSrc<T>::fprop(T * out)
+{
+    ds_.seek(start_ + idx_[this->curPos_]);
+    return ds_.fprop(out);
+}
+
+template<typename T> int
+SubsetDataSrc<T>::seek(int pos)
+{
+    if (pos < 0 || pos >= this->size_) {
+        std::stringstream ss;
+        ss << "must be between 0 and " << (this->size_ - 1) << ".";
+        throw ParameterError("pos", ss.str());
+    }
+
+    int const oldPos = this->curPos_;
+    this->curPos_ = pos;
+    return oldPos;
+}
+
+template<typename T> void
+SubsetDataSrc<T>::shuffle()
+{
+    std::random_shuffle(idx_.begin(), idx_.end());
+}
+
+template<typename T> void
+SubsetDataSrc<T>::shift(int dist)
+{
+    if (this->size_ > 0) {
+        while (dist < 0) dist += this->size_;
+        for (int i = 0; i < this->size_; ++i)
+            idx_[i] = (idx_[i] + dist) % this->size_;
+    }
+}
+
+template<typename T> void
+SubsetDataSrc<T>::reset()
+{
+    if (this->size_ > 0) {
+        idx_.resize(this->size_);
+        for (int i = 0; i < this->size_; ++i)
+            idx_[i] = i;
+    }
+}
+
+template<typename T> size_t
+SubsetDataSrc<T>::sizeOut() const
+{
+    return ds_.sizeOut();
+}
+
+template<typename T> Size
+SubsetDataSrc<T>::sizePattern() const
+{
+    return ds_.sizePattern();
+}
+
+template<typename T> int
+SubsetDataSrc<T>::idx(int pos) const
+{
+    pos = (pos < 0) ? this->curPos_ : pos;
+
+    if (pos < 0 || pos >= this->size_) {
+        std::stringstream ss;
+        ss << "must be between 0 and " << (this->size_ - 1) << ".";
+        throw ParameterError("pos", ss.str());
+    }
+
+    return ds_.idx(start_ + idx_[pos]);
+}
+
+template<typename T> std::string
+SubsetDataSrc<T>::toString() const
+{
+    std::stringstream ss;
+    ss << "SubsetDataSrc["
+        << ds_.toString()
+        << "; start=" << start_
+        << ", size=" << this->size_
+        << "]";
+    return ss.str();
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class SubsetDataSrc<float>;
+template class SubsetDataSrc<double>;
+/*! @} */
+
+CNNPLUS_NS_END

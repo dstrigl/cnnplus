@@ -1,0 +1,60 @@
+/**************************************************************************//**
+ *
+ * \file   onlinetrainer.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Feb 04 2009
+ *
+ * $Id$
+ *
+ * \brief  Header for cnnplus::OnlineTrainer.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_ONLINETRAINER_HH
+#define CNNPLUS_ONLINETRAINER_HH
+
+#include "common.hh"
+#include "trainer.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! Supervised online learning trainer
+template< typename T, class ErrFnc = MeanSquaredError<T> >
+class OnlineTrainer : public Trainer<T, ErrFnc>
+{
+public:
+    //! \todo doc
+    class Adapter
+    {
+    public:
+        explicit Adapter(size_t maxEpochs = 1000) : maxEpochs_(maxEpochs)
+        {}
+        virtual ~Adapter() {}
+        virtual bool update(
+            OnlineTrainer<T, ErrFnc> & trainer,
+            DataSource<T> & ds, size_t epoch, T & eta);
+    protected:
+        size_t const maxEpochs_;
+    };
+
+    //! Ctr
+    OnlineTrainer(NeuralNet<T> & net, T eta, Adapter & adapter);
+    //! Ctr
+    OnlineTrainer(NeuralNet<T> & net, T eta, size_t maxEpochs = 1000);
+    //! Dtr
+    virtual ~OnlineTrainer();
+
+    virtual void train(DataSource<T> & ds);
+    virtual std::string toString() const;
+
+    T eta() const { return eta_; }
+
+private:
+    Adapter * adapter_;
+    bool const delAdapter_;
+    T eta_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_ONLINETRAINER_HH

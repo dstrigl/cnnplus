@@ -1,0 +1,11 @@
+- Rename cnnplus to cnnlib
+- Check CE error function for single output neuron
+- Correct paper/book references (\see ...)
+- More checks of the ctr/fnc-arguments and throw exceptions
+- Add more unit-tests
+- Add more doxygen doc
+- Better cmake support (FindIPP, FindMKL, etc.)
+- Write README to build and run the lib
+- Clean-up tests.cc
+- Better error-handling for "out of memory" in matvecli and cumvli
+- Look for over/underflow problems (look how it's done in NETLAB)

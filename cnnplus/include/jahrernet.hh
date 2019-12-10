@@ -1,0 +1,77 @@
+/**************************************************************************//**
+ *
+ * \file   jahrernet.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Mar 07 2009
+ *
+ * $Id: jahrernet.hh 1835 2009-07-21 08:03:24Z dast $
+ *
+ * \brief  Header for cnnplus::JahrerNet.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_JAHRERNET_HH
+#define CNNPLUS_JAHRERNET_HH
+
+#include "common.hh"
+#include "neuralnet.hh"
+#include "fulllayer.hh"
+#include "convlayer.hh"
+#include "sublayer.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! A 6-layer convolutional neural network, as recommended by Michael Jahrer
+/*! \see Handwritten digit recognition using a Convolutional Neural Network,
+         Michael Jahrer, University of Technology, Graz, September 22, 2008
+ */
+template<typename T>
+class JahrerNet : public NeuralNet<T>
+{
+public:
+    //! Ctr
+    /*! \param numMapsL1 number of feature maps in layer 1
+        \param numMapsL3 number of feature maps in layer 3
+        \param connPropL3 probability of the connection ration in layer 3
+        \param numMapsL5 number of feature maps in layer 5
+        \param connPropL5 probability of the connection ration in layer 5
+     */
+    JahrerNet(size_t numMapsL1 =  20,
+              size_t numMapsL3 =  80, double connPropL3 = 0.14,
+              size_t numMapsL5 = 350, double connPropL5 = 0.2);
+    //! Dtr
+    virtual ~JahrerNet();
+    virtual void forget(T sigma, bool scale = false);
+    virtual void forget();
+    virtual void reset();
+    virtual void update(T eta);
+    virtual void fprop(T const * in, T * out);
+    virtual void bprop(T * in, T const * out, bool accumGradients = false);
+    virtual void load(std::string const & filename);
+    virtual void save(std::string const & filename) const;
+    virtual void writeOut(std::string const & filename, T * const out = NULL) const;
+    virtual size_t sizeIn() const { return layer1_.sizeIn().area(); }
+    virtual size_t sizeOut() const { return layer6_.sizeOut().area(); }
+    virtual void trainableParam(typename NeuralNet<T>::TrainableParam & param);
+    virtual std::string toString() const;
+    virtual size_t numTrainableParam() const;
+    virtual size_t numConnections() const;
+
+private:
+    ConvLayer< T, Tanh<T> > layer1_;
+    SubLayer < T, Tanh<T> > layer2_;
+    ConvLayer< T, Tanh<T> > layer3_;
+    SubLayer < T, Tanh<T> > layer4_;
+    ConvLayer< T, Tanh<T> > layer5_;
+    FullLayer< T, Tanh<T> > layer6_;
+
+    T * stateL1_; size_t strideL1_;
+    T * stateL2_; size_t strideL2_;
+    T * stateL3_; size_t strideL3_;
+    T * stateL4_; size_t strideL4_;
+    T * stateL5_; size_t strideL5_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_JAHRERNET_HH

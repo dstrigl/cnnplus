@@ -1,0 +1,223 @@
+/**************************************************************************//**
+ *
+ * \file   cbclfacedatasrc.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Apr 06 2009
+ *
+ * $Id: cbclfacedatasrc.cc 1827 2009-07-20 18:17:58Z dast $
+ *
+ * \brief  Implementation of cnnplus::CbclFaceDataSrc.
+ *
+ *****************************************************************************/
+
+#include "cbclfacedatasrc.hh"
+#include "error.hh"
+#include <sstream>
+#include <algorithm>
+#include <fstream>
+
+CNNPLUS_NS_BEGIN
+
+template<typename T>
+CbclFaceDataSrc<T>::CbclFaceDataSrc(
+    Size const & imgSize, T const dataRangeMin, T const dataRangeMax)
+    : DataSource<T>(dataRangeMin, dataRangeMax), filename_(), imageSize_(imgSize),
+    scale_(dataRangeMax - dataRangeMin), shift_(dataRangeMin), idx_(),
+    yStart_((imgSize.height() - 19) / 2), yEnd_(yStart_ + 19),
+    xStart_((imgSize.width()  - 19) / 2), xEnd_(xStart_ + 19),
+    images_(NULL), labels_(NULL)
+{
+    if (imgSize.height() < 19 || imgSize.width() < 19)
+        throw ParameterError("imgSize", "must be greater or equal to 19x19.");
+}
+
+template<typename T> void
+CbclFaceDataSrc<T>::load(std::string const & filename)
+{
+    unload();
+
+    try {
+        // Open database file
+        std::ifstream file(filename.c_str());
+        if (!file)
+            throw IoError("Failed to open file '" + filename + "'.");
+
+        std::string str;
+
+        // Read number of examples
+        if (std::getline(file, str)) {
+            std::istringstream parser(str);
+            parser >> this->size_;
+            if (this->size_ <= 0)
+                throw DataSourceError("Invalid number of examples.");
+        }
+        else {
+            throw IoError("Failed to read from file.");
+        }
+
+        // Read number of dimensions (must be 361 = 19x19)
+        if (std::getline(file, str)) {
+            int dims = -1;
+            std::istringstream parser(str);
+            parser >> dims;
+            if (dims != 361)
+                throw DataSourceError("Invalid number of dimensions.");
+        }
+        else {
+            throw IoError("Failed to read from file.");
+        }
+
+        // Allocate memory
+        images_ = static_cast<T*>(malloc(this->size_ * 361 * sizeof(T)));
+        labels_ = static_cast<char*>(malloc(this->size_));
+
+        // Read pixel values and label of each example
+        for (int i = 0; i < this->size_; ++i) {
+            if (std::getline(file, str)) {
+                std::istringstream parser(str);
+                // Read pixel values (pixel values are between 0 and 1)
+                for (int j = 0; j < 361; ++j)
+                    parser >> images_[i * 361 + j];
+                // Read label (1 for a face, -1 for a non-face)
+                int label = 0; parser >> label;
+                labels_[i] = static_cast<char>(label);
+            }
+            else {
+                throw IoError("Failed to read from file.");
+            }
+        }
+
+        // Close file
+        file.close();
+    }
+    catch (...) {
+        unload();
+        throw;
+    }
+
+    filename_ = filename;
+
+    reset();
+    this->curPos_ = 0;
+}
+
+template<typename T> void
+CbclFaceDataSrc<T>::unload() throw()
+{
+    // Deallocate memory
+    if (images_) free(images_); images_ = NULL;
+    if (labels_) free(labels_); labels_ = NULL;
+
+    filename_.clear(); idx_.clear();
+    this->size_ = this->curPos_ = -1;
+}
+
+template<typename T> int
+CbclFaceDataSrc<T>::fprop(T * out)
+{
+    CNNPLUS_ASSERT(out);
+    if (!images_ || !labels_) throw DataSourceError("No data loaded.");
+
+    // Scale pixel values between 'dataRangeMin_' and 'dataRangeMax_'
+    //   and copy it into the center of the output memory
+    T const * pix = images_ + idx_[this->curPos_] * 361;
+    for (size_t y = 0; y < imageSize_.height(); ++y) {
+        for (size_t x = 0; x < imageSize_.width(); ++x) {
+            out[y * imageSize_.width() + x] =
+                (y >= yStart_ && y < yEnd_ && x >= xStart_ && x < xEnd_)
+                ? (pix[(y - yStart_) * 19 + (x - xStart_)] * scale_ + shift_)
+                : this->dataRangeMin_;
+            //CNNPLUS_ASSERT(out[y * imageSize_.width() + x] >= this->dataRangeMin_
+            //            && out[y * imageSize_.width() + x] <= this->dataRangeMax_);
+        }
+    }
+
+    // Return label
+    return labels_[idx_[this->curPos_]];
+}
+
+template<typename T> int
+CbclFaceDataSrc<T>::seek(int const pos)
+{
+    if (pos < 0 || pos >= this->size_) {
+        std::stringstream ss;
+        ss << "must be between 0 and " << (this->size_ - 1) << ".";
+        throw ParameterError("pos", ss.str());
+    }
+
+    int const oldPos = this->curPos_;
+    this->curPos_ = pos;
+    return oldPos;
+}
+
+template<typename T> void
+CbclFaceDataSrc<T>::shuffle()
+{
+    std::random_shuffle(idx_.begin(), idx_.end());
+}
+
+template<typename T> void
+CbclFaceDataSrc<T>::shift(int dist)
+{
+    if (this->size_ > 0) {
+        while (dist < 0) dist += this->size_;
+        for (int i = 0; i < this->size_; ++i)
+            idx_[i] = (idx_[i] + dist) % this->size_;
+    }
+}
+
+template<typename T> void
+CbclFaceDataSrc<T>::reset()
+{
+    if (this->size_ > 0) {
+        idx_.resize(this->size_);
+        for (int i = 0; i < this->size_; ++i)
+            idx_[i] = i;
+    }
+}
+
+template<typename T> size_t
+CbclFaceDataSrc<T>::sizeOut() const
+{
+    return imageSize_.area();
+}
+
+template<typename T> Size
+CbclFaceDataSrc<T>::sizePattern() const
+{
+    return imageSize_;
+}
+
+template<typename T> int
+CbclFaceDataSrc<T>::idx(int pos) const
+{
+    pos = (pos < 0) ? this->curPos_ : pos;
+
+    if (pos < 0 || pos >= this->size_) {
+        std::stringstream ss;
+        ss << "must be between 0 and " << (this->size_ - 1) << ".";
+        throw ParameterError("pos", ss.str());
+    }
+
+    return idx_[pos];
+}
+
+template<typename T> std::string
+CbclFaceDataSrc<T>::toString() const
+{
+    std::stringstream ss;
+    ss << "CbclFaceDataSrc(\""
+        << filename_ << "\"; "
+        << "dataRange=[" << this->dataRangeMin_ << "," << this->dataRangeMax_ << "], "
+        << "size=" << this->size_ << ")";
+    return ss.str();
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class CbclFaceDataSrc<float>;
+template class CbclFaceDataSrc<double>;
+/*! @} */
+
+CNNPLUS_NS_END

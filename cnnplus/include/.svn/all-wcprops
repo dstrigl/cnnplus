@@ -1,0 +1,359 @@
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/CUDA/!svn/ver/3561/cnnplus/cnnplus/include
+END
+matdatasrc.hh
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1940/cnnplus/cnnplus/include/matdatasrc.hh
+END
+cugradienttest.hh
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1726/cnnplus/cnnplus/include/cugradienttest.hh
+END
+cuneuralnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1652/cnnplus/cnnplus/include/cuneuralnet.hh
+END
+simardnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/2939/cnnplus/cnnplus/include/simardnet.hh
+END
+common.hh
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/1492/cnnplus/cnnplus/include/common.hh
+END
+error.hh
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/1797/cnnplus/cnnplus/include/error.hh
+END
+cuconvlayer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/include/cuconvlayer.hh
+END
+neuralnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/include/neuralnet.hh
+END
+gradienttest.hh
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1553/cnnplus/cnnplus/include/gradienttest.hh
+END
+cudautils.hh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/3561/cnnplus/cnnplus/include/cudautils.hh
+END
+facefindernet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/CUDA/!svn/ver/1908/cnnplus/cnnplus/include/facefindernet.hh
+END
+cumvli.hh
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/1586/cnnplus/cnnplus/include/cumvli.hh
+END
+convlayer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1905/cnnplus/cnnplus/include/convlayer.hh
+END
+trainer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/3163/cnnplus/cnnplus/include/trainer.hh
+END
+types.hh
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/types.hh
+END
+batchtrainer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/batchtrainer.hh
+END
+cujahrernet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/cujahrernet.hh
+END
+datasrcview.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/datasrcview.hh
+END
+normdatasrc.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1827/cnnplus/cnnplus/include/normdatasrc.hh
+END
+cusublayer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/include/cusublayer.hh
+END
+cumomentumtrainer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/CUDA/!svn/ver/1815/cnnplus/cnnplus/include/cumomentumtrainer.hh
+END
+cimg.hh
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/cimg.hh
+END
+curproptrainer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1819/cnnplus/cnnplus/include/curproptrainer.hh
+END
+errorfnc.hh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1760/cnnplus/cnnplus/include/errorfnc.hh
+END
+cuphungnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1839/cnnplus/cnnplus/include/cuphungnet.hh
+END
+contbl.hh
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/include/contbl.hh
+END
+jahrernet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/jahrernet.hh
+END
+cusquasher.hh
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1429/cnnplus/cnnplus/include/cusquasher.hh
+END
+culenet5.hh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1962/cnnplus/cnnplus/include/culenet5.hh
+END
+cbclfacedatasrc.hh
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/1827/cnnplus/cnnplus/include/cbclfacedatasrc.hh
+END
+culolnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/culolnet.hh
+END
+cugarcianet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/2010/cnnplus/cnnplus/include/cugarcianet.hh
+END
+sublayer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1905/cnnplus/cnnplus/include/sublayer.hh
+END
+momentumtrainer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/1419/cnnplus/cnnplus/include/momentumtrainer.hh
+END
+cufulllayer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1904/cnnplus/cnnplus/include/cufulllayer.hh
+END
+rproptrainer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1775/cnnplus/cnnplus/include/rproptrainer.hh
+END
+phungnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/phungnet.hh
+END
+uniondatasrc.hh
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1827/cnnplus/cnnplus/include/uniondatasrc.hh
+END
+datasource.hh
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1827/cnnplus/cnnplus/include/datasource.hh
+END
+squasher.hh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/squasher.hh
+END
+lenet5.hh
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/1962/cnnplus/cnnplus/include/lenet5.hh
+END
+garcianet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/2006/cnnplus/cnnplus/include/garcianet.hh
+END
+lolnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/lolnet.hh
+END
+elastdistdatasrc.hh
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/CUDA/!svn/ver/1827/cnnplus/cnnplus/include/elastdistdatasrc.hh
+END
+cufulllayernet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/cufulllayernet.hh
+END
+fulllayer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/CUDA/!svn/ver/1905/cnnplus/cnnplus/include/fulllayer.hh
+END
+propsbench.hh
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1685/cnnplus/cnnplus/include/propsbench.hh
+END
+matvecli.hh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1638/cnnplus/cnnplus/include/matvecli.hh
+END
+culayer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/1905/cnnplus/cnnplus/include/culayer.hh
+END
+jacobiantest.hh
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1426/cnnplus/cnnplus/include/jacobiantest.hh
+END
+fulllayernet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/fulllayernet.hh
+END
+subsetdatasrc.hh
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/CUDA/!svn/ver/1873/cnnplus/cnnplus/include/subsetdatasrc.hh
+END
+onlinetrainer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/onlinetrainer.hh
+END
+randutil.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/randutil.h
+END
+mnistsource.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1827/cnnplus/cnnplus/include/mnistsource.hh
+END
+layer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/2161/cnnplus/cnnplus/include/layer.hh
+END
+mathli.hh
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/CUDA/!svn/ver/1771/cnnplus/cnnplus/include/mathli.hh
+END
+cusimardnet.hh
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1835/cnnplus/cnnplus/include/cusimardnet.hh
+END
+timer.hh
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/CUDA/!svn/ver/1396/cnnplus/cnnplus/include/timer.hh
+END

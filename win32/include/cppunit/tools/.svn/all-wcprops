@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/tools
+END
+XmlElement.h
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/tools/XmlElement.h
+END
+Makefile.in
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/tools/Makefile.in
+END
+XmlDocument.h
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/tools/XmlDocument.h
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/tools/Makefile.am
+END
+Algorithm.h
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/tools/Algorithm.h
+END
+StringTools.h
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/include/cppunit/tools/StringTools.h
+END

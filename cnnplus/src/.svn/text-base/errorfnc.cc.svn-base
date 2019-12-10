@@ -1,0 +1,145 @@
+/**************************************************************************//**
+ *
+ * \file   errorfnc.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jan 24 2009
+ *
+ * $Id$
+ *
+ * \brief  Implementation of the neural-net error functions.
+ *
+ *****************************************************************************/
+
+#include "errorfnc.hh"
+#include "matvecli.hh"
+#include "mathli.hh"
+
+CNNPLUS_NS_BEGIN
+
+template<typename T>
+MeanSquaredError<T>::MeanSquaredError(size_t const size) : ErrorFnc<T>(size)
+{
+    // Allocate memory
+    diff_ = matvecli::allocv<T>(this->size_);
+    squares_ = matvecli::allocv<T>(this->size_);
+}
+
+template<typename T>
+MeanSquaredError<T>::~MeanSquaredError()
+{
+    // Deallocate memory
+    matvecli::free<T>(diff_);
+    matvecli::free<T>(squares_);
+}
+
+template<typename T> T
+MeanSquaredError<T>::fprop(T * in, T const * desired)
+{
+    CNNPLUS_ASSERT(in && desired);
+
+    // Compute: diff_ = in - desired
+    matvecli::subv<T>(in, desired, diff_, this->size_);
+
+    // Compute: squares_ = diff_^2
+    matvecli::sqrv<T>(diff_, squares_, this->size_);
+
+    // Compute: sum_of[squares_]
+    return matvecli::sumv<T>(squares_, this->size_);
+}
+
+template<typename T> void
+MeanSquaredError<T>::bprop(T * in)
+{
+    CNNPLUS_ASSERT(in);
+
+    // Compute: in = diff_ * 2
+    matvecli::mulvc<T>(diff_, 2, in, this->size_);
+}
+
+template<typename T>
+CrossEntropy<T>::CrossEntropy(size_t const size) : ErrorFnc<T>(size)
+{
+    // Allocate memory
+    diff_ = matvecli::allocv<T>(this->size_);
+}
+
+template<typename T>
+CrossEntropy<T>::~CrossEntropy()
+{
+    // Deallocate memory
+    matvecli::free<T>(diff_);
+}
+
+template<typename T> T
+CrossEntropy<T>::fprop(T * in, T const * desired)
+{
+    CNNPLUS_ASSERT(in && desired);
+
+    T error = 0;
+
+    if (this->size_ > 1) {
+        // To turn the elements of vector 'in' into valid probabilities
+        // in the range (0,1), normalize them using a "softmax" function
+
+        // Softmax without Overflow:
+        // http://lingpipe-blog.com/2009/03/17/softmax-without-overflow
+        //
+        // [...] What we do is rescale so there's no overflow by subtracting
+        // the maximum of the 'in' values from each 'in[i]'. That converts
+        // overflow into underflow. Underflow is no problem, because that
+        // rounds off to zero, which is a well-behaved floating point number.
+
+        // Compute: in = exp(in) / sum_of[exp(in)]
+    #if 1
+        matvecli::subvc<T>(in, matvecli::maxv<T>(in, this->size_), this->size_);
+    #endif
+        matvecli::expv<T>(in, this->size_);
+        matvecli::divvc<T>(in, matvecli::sumv<T>(in, this->size_), this->size_);
+
+        CNNPLUS_ASSERT(matvecli::minv<T>(in, this->size_) >= 0 &&
+                       matvecli::maxv<T>(in, this->size_) <= 1 &&
+                       mathli::abs(matvecli::sumv<T>(in, this->size_) - 1)
+                           < 10 * mathli::eps<T>());
+
+        CNNPLUS_ASSERT(matvecli::minv<T>(desired, this->size_) >= 0 &&
+                       matvecli::maxv<T>(desired, this->size_) <= 1 &&
+                       mathli::abs(matvecli::sumv<T>(desired, this->size_) - 1)
+                           < 10 * mathli::eps<T>());
+
+        // Compute: -sum_of[desired * ln(in)]
+        for (size_t i = 0; i < this->size_; ++i) {
+            //error -= desired[i] ? (desired[i] * mathli::log(in[i]/desired[i])) : 0;
+            error -= desired[i] * mathli::log(in[i]);
+        }
+    }
+    else {
+        // Compute: -[desired * log(in) + (1 - desired) * log(1 - in)]
+        T const d = desired[0], y = in[0];
+        error -= d * mathli::log(y) + (1 - d) * mathli::log(1 - y);
+    }
+
+    // Compute: diff_ = in - desired
+    matvecli::subv<T>(in, desired, diff_, this->size_);
+
+    return error;
+}
+
+template<typename T> void
+CrossEntropy<T>::bprop(T * in)
+{
+    CNNPLUS_ASSERT(in);
+
+    // Copy vector 'diff_' to 'in'
+    matvecli::copyvv<T>(diff_, in, this->size_);
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class MeanSquaredError<float>;
+template class CrossEntropy<float>;
+template class MeanSquaredError<double>;
+template class CrossEntropy<double>;
+/*! @} */
+
+CNNPLUS_NS_END

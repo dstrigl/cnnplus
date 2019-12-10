@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/CUDA/!svn/ver/1396/cnnplus/data/mnist
+END
+train-labels-idx1-ubyte
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/1396/cnnplus/data/mnist/train-labels-idx1-ubyte
+END
+t10k-labels-idx1-ubyte
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1396/cnnplus/data/mnist/t10k-labels-idx1-ubyte
+END
+train-images-idx3-ubyte
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/CUDA/!svn/ver/1396/cnnplus/data/mnist/train-images-idx3-ubyte
+END
+t10k-images-idx3-ubyte
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/CUDA/!svn/ver/1396/cnnplus/data/mnist/t10k-images-idx3-ubyte
+END

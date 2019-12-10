@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/libs/msvc90
+END
+cppunit.lib
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/libs/msvc90/cppunit.lib
+END
+cppunitd.lib
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/CUDA/!svn/ver/1396/cnnplus/win32/libs/msvc90/cppunitd.lib
+END

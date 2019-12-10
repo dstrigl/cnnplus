@@ -1,0 +1,137 @@
+/**************************************************************************//**
+ *
+ * \file   onlinetrainer.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Feb 04 2009
+ *
+ * $Id$
+ *
+ * \brief  Implementation of cnnplus::OnlineTrainer.
+ *
+ *****************************************************************************/
+
+#include "onlinetrainer.hh"
+#include "neuralnet.hh"
+#include "datasource.hh"
+#include "error.hh"
+#include "matvecli.hh"
+#include <sstream>
+#include <cstdio>
+
+CNNPLUS_NS_BEGIN
+
+template<typename T, class ErrFnc> bool
+OnlineTrainer<T, ErrFnc>::Adapter::update(
+    OnlineTrainer<T, ErrFnc> & trainer, DataSource<T> & ds, size_t const epoch, T & eta)
+{
+    double errRate = 0;
+    T const error = trainer.test(ds, errRate);
+
+    printf("# epoch: %04d, error: %10.8f, error-rate: %8.4f%%\n",
+        epoch, error, errRate);
+    fflush(stdout);
+
+    return (epoch < maxEpochs_);
+}
+
+template<typename T, class ErrFnc>
+OnlineTrainer<T, ErrFnc>::OnlineTrainer(NeuralNet<T> & net, T const eta, Adapter & adapter)
+    : Trainer<T, ErrFnc>(net), adapter_(&adapter), delAdapter_(false), eta_(eta)
+{
+    if (eta <= 0)
+        throw ParameterError("eta", "must be greater zero.");
+}
+
+template<typename T, class ErrFnc>
+OnlineTrainer<T, ErrFnc>::OnlineTrainer(NeuralNet<T> & net, T const eta, size_t const maxEpochs)
+    : Trainer<T, ErrFnc>(net), adapter_(new Adapter(maxEpochs)), delAdapter_(true), eta_(eta)
+{
+    if (eta <= 0)
+        throw ParameterError("eta", "must be greater zero.");
+}
+
+template<typename T, class ErrFnc>
+OnlineTrainer<T, ErrFnc>::~OnlineTrainer()
+{
+    if (delAdapter_) delete adapter_;
+}
+
+template<typename T, class ErrFnc> void
+OnlineTrainer<T, ErrFnc>::train(DataSource<T> & ds)
+{
+    if (ds.sizeOut() != this->net_.sizeIn())
+        throw ParameterError("ds", "size doesn't match.");
+
+    // Set vector 'des_' to negative target value
+    if (this->net_.sizeOut() > 1)
+        matvecli::setv<T>(this->des_, this->net_.sizeOut(), this->targetVal_.NEG());
+
+    // Loop over epochs until 'adapter_->update(...)' returns 'false'
+    for (size_t epoch = 0; adapter_->update(*this, ds, epoch, eta_); ++epoch)
+    {
+        ds.shuffle();
+        ds.rewind();
+
+        // Loop over all patterns
+        for (int i = 1; i <= ds.size(); ds.next(), ++i)
+        {
+            // Read pattern and desired label from data source
+            int const desLbl = ds.fprop(this->in_);
+
+            // Compute neural-net output
+            this->net_.fprop(this->in_, this->out_);
+
+            // Compute error
+            if (this->net_.sizeOut() > 1) {
+                CNNPLUS_ASSERT(0 <= desLbl && desLbl < static_cast<int>(this->net_.sizeOut()));
+                this->des_[desLbl] = this->targetVal_.POS();
+                this->errFnc_.fprop(this->out_, this->des_);
+                this->des_[desLbl] = this->targetVal_.NEG();
+            }
+            else {
+                this->des_[0] = static_cast<T>(desLbl);
+                this->errFnc_.fprop(this->out_, this->des_);
+            }
+
+            // Backpropagate error through network
+            this->errFnc_.bprop(this->out_);
+            this->net_.bprop(NULL, this->out_);
+
+            // Updates weights and biases
+            this->net_.update(-eta_);
+
+#ifdef CNNPLUS_PRINT_PROGRESS
+            printf("train %.2f%%\r", i * 100.0 / ds.size());
+            fflush(stdout);
+#endif // CNNPLUS_PRINT_PROGRESS
+        }
+#ifdef CNNPLUS_PRINT_PROGRESS
+        printf("             \r");
+        fflush(stdout);
+#endif // CNNPLUS_PRINT_PROGRESS
+    }
+}
+
+template<typename T, class ErrFnc> std::string
+OnlineTrainer<T, ErrFnc>::toString() const
+{
+    std::stringstream ss;
+    ss << "OnlineTrainer["
+        << this->errFnc_.toString()
+        << "; targetVal=("
+        << this->targetVal_.NEG() << ","
+        << this->targetVal_.POS() << ")"
+        << ", eta=" << eta_ << "]";
+    return ss.str();
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class OnlineTrainer< float,  MeanSquaredError<float>  >;
+template class OnlineTrainer< double, MeanSquaredError<double> >;
+template class OnlineTrainer< float,  CrossEntropy<float>      >;
+template class OnlineTrainer< double, CrossEntropy<double>     >;
+/*! @} */
+
+CNNPLUS_NS_END

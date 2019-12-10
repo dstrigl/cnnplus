@@ -1,0 +1,56 @@
+/**************************************************************************//**
+ *
+ * \file   bench_garcianet.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Aug 12 2009
+ *
+ * $Id$
+ *
+ *****************************************************************************/
+
+#include <iostream>
+#include "garcianet.hh"
+#ifdef CNNPLUS_USE_CUDA
+#include "cugarcianet.hh"
+#endif // CNNPLUS_USE_CUDA
+#include "propsbench.hh"
+using namespace cnnplus;
+
+template<typename T>
+void run(Size const & sizeImgIn, size_t const numRuns = 6977)
+{
+    GarciaNet<T> net(sizeImgIn);
+
+    double t1 = 0;
+    for (size_t i = 0; i < 3; ++i)
+        t1 += PropsBench(numRuns).run(net, true);
+    t1 /= 3;
+
+    //std::cout << net.toString() << ": " << t1 << " sec" << std::endl;
+    std::cout << "CPU " << sizeImgIn.toString() << ": " << t1 << " sec" << std::endl;
+
+#ifdef CNNPLUS_USE_CUDA
+    CuGarciaNet<T> cuNet(sizeImgIn);
+
+    double t2 = 0;
+    for (size_t i = 0; i < 3; ++i)
+        t2 += PropsBench(numRuns).run(cuNet, true);
+    t2 /= 3;
+
+    //std::cout << cuNet.toString() << ": " << t2 << " sec" << std::endl;
+    std::cout << "GPU " << sizeImgIn.toString() << ": " << t2 << " sec" << std::endl;
+    std::cout << "CPU/GPU: " << (t1 / t2) << std::endl << std::endl;
+#endif // CNNPLUS_USE_CUDA
+}
+
+int main(int argc, char *argv[])
+{
+    typedef float DataType;
+
+    run<DataType>(Size(20, 20));
+    run<DataType>(Size(28, 28));
+    run<DataType>(Size(36, 36));
+    run<DataType>(Size(40, 40));
+
+    return 0;
+}

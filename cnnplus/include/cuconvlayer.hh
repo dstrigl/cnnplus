@@ -1,0 +1,120 @@
+/**************************************************************************//**
+ *
+ * \file   cuconvlayer.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jun 17 2009
+ *
+ * $Id: cuconvlayer.hh 1904 2009-07-30 19:29:56Z dast $
+ *
+ * \brief  Header for cnnplus::CuConvLayer.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_CUCONVLAYER_HH
+#define CNNPLUS_CUCONVLAYER_HH
+
+#include "common.hh"
+#include "culayer.hh"
+#include "cusquasher.hh"
+#include "contbl.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! Convolutional layer
+template< typename T, class SquFnc = CuTanh<T> >
+class CuConvLayer : public CuLayer<T>
+{
+public:
+    //! Ctr
+    /*! \param sizeMapsIn size of input feature maps
+        \param numMapsIn number of input feature maps
+        \param numMapsOut number of output feature maps
+        \param sizeKernel kernel size
+        \param stepV vertical step size of the kernel
+        \param stepH horizontal step size of the kernel
+        \param connProp probability of the connection ration
+     */
+    CuConvLayer(Size const & sizeMapsIn, size_t numMapsIn, size_t numMapsOut,
+                Size const & sizeKernel, size_t stepV = 1, size_t stepH = 1,
+                double connProp = 1);
+    //! Dtr
+    virtual ~CuConvLayer();
+
+    virtual void forget(T sigma, bool scale = false);
+    virtual void forget();
+    virtual void reset();
+    virtual void update(T eta);
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut);
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut,
+                       bool accumGradients = false);
+#ifdef CNNPLUS_MATLAB_FOUND
+    virtual void load(mxArray const * arr);
+    virtual mxArray * save() const;
+#endif // CNNPLUS_MATLAB_FOUND
+    virtual Size sizeIn() const { return Size(numMapsIn_, sizeMapsIn_.area()); }
+    virtual Size sizeOut() const { return Size(numMapsOut_, sizeMapsOut_.area()); }
+    virtual void trainableParam(typename Layer<T>::TrainableParam & param);
+    virtual std::string toString() const;
+    virtual size_t numTrainableParam() const;
+    virtual size_t numConnections() const;
+
+    //! Returns the size of the input feature maps
+    Size sizeMapsIn() const { return sizeMapsIn_; }
+    //! Returns the size of the output feature maps
+    Size sizeMapsOut() const { return sizeMapsOut_; }
+    //! Returns the number of input feature maps
+    size_t numMapsIn() const { return numMapsIn_; }
+    //! Returns the number of output feature maps
+    size_t numMapsOut() const { return numMapsOut_; }
+    //! Returns the kernel size
+    Size sizeKernel() const { return sizeKernel_; }
+    //! Returns the vertical step size of the kernel
+    size_t stepV() const { return stepV_; }
+    //! Returns the horizontal step size of the kernel
+    size_t stepH() const { return stepH_; }
+    //! Sets a specified connection table
+    void setConTbl(ConTbl const & conTbl);
+    //! Returns the connection table of the layer
+    ConTbl const & conTbl() const { return conTbl_; }
+
+private:
+    Size const sizeMapsIn_;
+    size_t const numMapsIn_;
+    size_t const numMapsOut_;
+    Size const sizeKernel_;
+    size_t const stepV_;
+    size_t const stepH_;
+    Size const sizeMapsOut_;
+
+    ConTbl conTbl_;
+    SquFnc squasher_;
+
+    // GPU
+    T * d_inUnfolded_;
+    size_t d_strideInUnfolded_;
+    T * d_weights_;
+    size_t d_strideWeights_;
+    T * d_dWeights_;
+    size_t d_strideDWeights_;
+    T * d_weightsMask_;
+    size_t d_strideWeightsMask_;
+    T * d_biases_;
+    T * d_dBiases_;
+    T * d_sum_;
+    size_t d_strideSum_;
+    T * d_delta_;
+    size_t d_strideDelta_;
+    T * d_tmp_;
+    size_t d_strideTmp_;
+
+    // CPU
+    T * h_weights_;
+    size_t h_strideWeights_;
+    T * h_biases_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_CUCONVLAYER_HH

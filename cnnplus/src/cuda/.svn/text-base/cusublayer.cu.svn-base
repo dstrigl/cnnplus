@@ -1,0 +1,659 @@
+/**************************************************************************//**
+ *
+ * \file   cusublayer.cu
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jun 09 2009
+ *
+ * $Id$
+ *
+ * \brief  Implementation of cnnplus::CuSubLayer.
+ *
+ *****************************************************************************/
+
+#include "cudautils.hh"
+
+///////////////////////////////////////////////////////////////////////////////
+// CUDA kernels
+
+__global__ void
+subsample_kernel1(float  const * in,       size_t const strideIn,
+                  float  const * weights,
+                  float  const * biases,
+                  float        * inSub,    size_t const strideInSub,
+                  float        * sum,      size_t const strideSum,
+                  size_t const   mapsInH,  size_t const mapsInW,
+                  size_t const   mapsOutH, size_t const mapsOutW,
+                  size_t const   sampleH,  size_t const sampleW)
+{
+    size_t const   numMap = blockIdx.y;
+    float  const * mapIn  = in + CNN_UIMUL(numMap, strideIn);
+    size_t const   r      = threadIdx.y;
+    size_t const   c      = threadIdx.x;
+    size_t const   top    = CNN_UIMUL(r, sampleH);
+    size_t const   left   = CNN_UIMUL(c, sampleW);
+    size_t const   bottom = top + sampleH;
+    size_t const   right  = left + sampleW;
+    size_t const   i      = CNN_UIMUL(r, mapsOutW) + c;
+    float          tmp    = 0;
+
+    for (size_t y = top; y < bottom; ++y) {
+        for (size_t x = left; x < right; ++x) {
+            tmp += mapIn[CNN_UIMUL(y, mapsInW) + x];
+        }
+    }
+
+    inSub[CNN_UIMUL(numMap, strideInSub) + i] = tmp;
+    sum  [CNN_UIMUL(numMap, strideSum  ) + i] = tmp * weights[numMap] + biases[numMap];
+}
+
+__global__ void
+subsample_kernel2(float  const * in,       size_t const strideIn,
+                  float  const * weights,
+                  float  const * biases,
+                  float        * inSub,    size_t const strideInSub,
+                  float        * sum,      size_t const strideSum,
+                  size_t const   mapsInH,  size_t const mapsInW,
+                  size_t const   mapsOutH, size_t const mapsOutW,
+                  size_t const   sampleH,  size_t const sampleW,
+                  size_t const   numMaps)
+{
+    size_t const numMap = CNN_UIMUL(blockIdx.y, blockDim.y) + threadIdx.y;
+    size_t const i      = CNN_UIMUL(blockIdx.x, blockDim.x) + threadIdx.x;
+
+    if (numMap >= numMaps || i >= CNN_UIMUL(mapsOutH, mapsOutW))
+        return;
+
+    float  const * mapIn  = in + CNN_UIMUL(numMap, strideIn);
+    size_t const   r      = i / mapsOutW;
+    size_t const   c      = i % mapsOutW;
+    size_t const   top    = CNN_UIMUL(r, sampleH);
+    size_t const   left   = CNN_UIMUL(c, sampleW);
+    size_t const   bottom = top + sampleH;
+    size_t const   right  = left + sampleW;
+    float          tmp    = 0;
+
+    for (size_t y = top; y < bottom; ++y) {
+        for (size_t x = left; x < right; ++x) {
+            tmp += mapIn[CNN_UIMUL(y, mapsInW) + x];
+        }
+    }
+
+    inSub[CNN_UIMUL(numMap, strideInSub) + i] = tmp;
+    sum  [CNN_UIMUL(numMap, strideSum  ) + i] = tmp * weights[numMap] + biases[numMap];
+}
+
+__global__ void
+upsample_kernel1(float  const * delta,    size_t const strideDelta,
+                 float  const * weights,
+                 float        * in,       size_t const strideIn,
+                 size_t const   mapsInH,  size_t const mapsInW,
+                 size_t const   mapsOutH, size_t const mapsOutW,
+                 size_t const   sampleH,  size_t const sampleW)
+{
+    size_t const   numMap = blockIdx.y;
+    float        * mapIn  = in + CNN_UIMUL(numMap, strideIn);
+    size_t const   r      = threadIdx.y;
+    size_t const   c      = threadIdx.x;
+    size_t const   top    = CNN_UIMUL(r, sampleH);
+    size_t const   left   = CNN_UIMUL(c, sampleW);
+    size_t const   bottom = top + sampleH;
+    size_t const   right  = left + sampleW;
+    size_t const   i      = CNN_UIMUL(r, mapsOutW) + c;
+    float  const   tmp    = delta[CNN_UIMUL(numMap, strideDelta) + i] * weights[numMap];
+
+    for (size_t y = top; y < bottom; ++y) {
+        for (size_t x = left; x < right; ++x) {
+            mapIn[CNN_UIMUL(y, mapsInW) + x] = tmp;
+        }
+    }
+}
+
+__global__ void
+upsample_kernel2(float  const * delta,    size_t const strideDelta,
+                 float  const * weights,
+                 float        * in,       size_t const strideIn,
+                 size_t const   mapsInH,  size_t const mapsInW,
+                 size_t const   mapsOutH, size_t const mapsOutW,
+                 size_t const   sampleH,  size_t const sampleW,
+                 size_t const   numMaps)
+{
+    size_t const numMap = CNN_UIMUL(blockIdx.y, blockDim.y) + threadIdx.y;
+    size_t const i      = CNN_UIMUL(blockIdx.x, blockDim.x) + threadIdx.x;
+
+    if (numMap >= numMaps || i >= CNN_UIMUL(mapsOutH, mapsOutW))
+        return;
+
+    float        * mapIn  = in + CNN_UIMUL(numMap, strideIn);
+    size_t const   r      = i / mapsOutW;
+    size_t const   c      = i % mapsOutW;
+    size_t const   top    = CNN_UIMUL(r, sampleH);
+    size_t const   left   = CNN_UIMUL(c, sampleW);
+    size_t const   bottom = top + sampleH;
+    size_t const   right  = left + sampleW;
+    float  const   tmp    = delta[CNN_UIMUL(numMap, strideDelta) + i] * weights[numMap];
+
+    for (size_t y = top; y < bottom; ++y) {
+        for (size_t x = left; x < right; ++x) {
+            mapIn[CNN_UIMUL(y, mapsInW) + x] = tmp;
+        }
+    }
+}
+
+__global__ void
+upsample_kernel3(float  const * delta,    size_t const strideDelta,
+                 float  const * weights,
+                 float        * in,       size_t const strideIn,
+                 size_t const   mapsInH,  size_t const mapsInW,
+                 size_t const   mapsOutH, size_t const mapsOutW,
+                 size_t const   sampleH,  size_t const sampleW,
+                 size_t const   numMaps)
+{
+    size_t const numMap = CNN_UIMUL(blockIdx.y, blockDim.y) + threadIdx.y;
+    size_t const i      = CNN_UIMUL(blockIdx.x, blockDim.x) + threadIdx.x;
+
+    if (numMap >= numMaps || i >= CNN_UIMUL(mapsInH, mapsInW))
+        return;
+
+    float        * mapIn = in + CNN_UIMUL(numMap, strideIn);
+    size_t const   r     = i / mapsInW;
+    size_t const   c     = i % mapsInW;
+    size_t const   y     = r / sampleH;
+    size_t const   x     = c / sampleW;
+
+    mapIn[i] =
+        delta[CNN_UIMUL(numMap, strideDelta) + CNN_UIMUL(y, mapsOutW) + x]
+        * weights[numMap];
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+#include "cusublayer.hh"
+#include "cumvli.hh"
+#include "matvecli.hh"
+#include "mathli.hh"
+#include <sstream>
+
+CNNPLUS_NS_BEGIN
+
+///////////////////////////////////////////////////////////////////////////////
+// CUDA kernel calls
+
+template<typename T> void
+subsample(T      const * in, size_t const strideIn,
+          T      const * weights,
+          T      const * biases,
+          T            * inSub, size_t const strideInSub,
+          T            * sum, size_t const strideSum,
+          Size   const & sizeMapsIn,
+          Size   const & sizeMapsOut,
+          Size   const & sizeSample,
+          size_t const   numMaps);
+
+template<> void
+subsample<float>(float  const * in, size_t const strideIn,
+                 float  const * weights,
+                 float  const * biases,
+                 float        * inSub, size_t const strideInSub,
+                 float        * sum, size_t const strideSum,
+                 Size   const & sizeMapsIn,
+                 Size   const & sizeMapsOut,
+                 Size   const & sizeSample,
+                 size_t const   numMaps)
+{
+    CNNPLUS_ASSERT(in    && strideIn    >= sizeMapsIn.area() );
+    CNNPLUS_ASSERT(inSub && strideInSub >= sizeMapsOut.area());
+    CNNPLUS_ASSERT(sum   && strideSum   >= sizeMapsOut.area());
+    CNNPLUS_ASSERT(sizeMapsIn.area()  > 0);
+    CNNPLUS_ASSERT(sizeMapsOut.area() > 0);
+    CNNPLUS_ASSERT(sizeSample.area()  > 0);
+    CNNPLUS_ASSERT(sizeSample.height() <= sizeMapsIn.height() &&
+                   sizeSample.width()  <= sizeMapsIn.width());
+    CNNPLUS_ASSERT(
+        sizeMapsIn.height() == (sizeMapsOut.height() * sizeSample.height()) &&
+        sizeMapsIn.width()  == (sizeMapsOut.width()  * sizeSample.width()));
+    CNNPLUS_ASSERT(numMaps > 0);
+    CNNPLUS_ASSERT(weights && biases);
+
+#if 0
+    if (sizeMapsOut.area() <= MAX_THREADS)
+    {
+        dim3 const dimGrid(1, numMaps);
+        dim3 const dimBlock(sizeMapsOut.width(), sizeMapsOut.height());
+        CNNPLUS_ASSERT(dimGrid.x == 1);
+        subsample_kernel1<<<dimGrid, dimBlock>>>(
+            in, strideIn, weights, biases, inSub, strideInSub, sum, strideSum,
+            sizeMapsIn.height(), sizeMapsIn.width(), sizeMapsOut.height(),
+            sizeMapsOut.width(), sizeSample.height(), sizeSample.width());
+        CUDA_CHECK_ERROR("Kernel call 'subsample_kernel1' failed");
+        return;
+    }
+#endif
+
+    dim3 const dimBlock(BLOCK_WIDTH, BLOCK_HEIGHT);
+    dim3 const dimGrid((sizeMapsOut.area() + dimBlock.x - 1) / dimBlock.x,
+                       (numMaps            + dimBlock.y - 1) / dimBlock.y);
+    subsample_kernel2<<<dimGrid, dimBlock>>>(
+        in, strideIn, weights, biases, inSub, strideInSub, sum, strideSum,
+        sizeMapsIn.height(), sizeMapsIn.width(), sizeMapsOut.height(),
+        sizeMapsOut.width(), sizeSample.height(), sizeSample.width(),
+        numMaps);
+    CUDA_CHECK_ERROR("Kernel call 'subsample_kernel2' failed");
+}
+
+template<> void
+subsample<double>(double const * in, size_t const strideIn,
+                  double const * weights,
+                  double const * biases,
+                  double       * inSub, size_t const strideInSub,
+                  double       * sum, size_t const strideSum,
+                  Size   const & sizeMapsIn,
+                  Size   const & sizeMapsOut,
+                  Size   const & sizeSample,
+                  size_t const   numMaps)
+{
+    throw NotImplementedError("Not yet supported [CUDA<double>].");
+}
+
+template<typename T> void
+upsample(T      const * delta, size_t const strideDelta,
+         T      const * weights,
+         T            * in, size_t const strideIn,
+         Size   const & sizeMapsIn,
+         Size   const & sizeMapsOut,
+         Size   const & sizeSample,
+         size_t const   numMaps);
+
+template<> void
+upsample<float>(float  const * delta, size_t const strideDelta,
+                float  const * weights,
+                float        * in, size_t const strideIn,
+                Size   const & sizeMapsIn,
+                Size   const & sizeMapsOut,
+                Size   const & sizeSample,
+                size_t const   numMaps)
+{
+    CNNPLUS_ASSERT(delta && strideDelta >= sizeMapsOut.area());
+    CNNPLUS_ASSERT(in    && strideIn    >= sizeMapsIn.area() );
+    CNNPLUS_ASSERT(sizeMapsIn.area()  > 0);
+    CNNPLUS_ASSERT(sizeMapsOut.area() > 0);
+    CNNPLUS_ASSERT(sizeSample.area()  > 0);
+    CNNPLUS_ASSERT(sizeSample.height() <= sizeMapsIn.height() &&
+                   sizeSample.width()  <= sizeMapsIn.width());
+    CNNPLUS_ASSERT(
+        sizeMapsIn.height() == (sizeMapsOut.height() * sizeSample.height()) &&
+        sizeMapsIn.width()  == (sizeMapsOut.width()  * sizeSample.width()));
+    CNNPLUS_ASSERT(numMaps > 0);
+    CNNPLUS_ASSERT(weights);
+
+#if 0
+    if (sizeMapsOut.area() <= MAX_THREADS)
+    {
+        dim3 const dimGrid(1, numMaps);
+        dim3 const dimBlock(sizeMapsOut.width(), sizeMapsOut.height());
+        CNNPLUS_ASSERT(dimGrid.x == 1);
+        upsample_kernel1<<<dimGrid, dimBlock>>>(
+            delta, strideDelta, weights, in, strideIn,
+            sizeMapsIn.height(), sizeMapsIn.width(), sizeMapsOut.height(),
+            sizeMapsOut.width(), sizeSample.height(), sizeSample.width());
+        CUDA_CHECK_ERROR("Kernel call 'upsample_kernel1' failed");
+        return;
+    }
+#endif
+
+#if 0
+    dim3 const dimBlock(BLOCK_WIDTH, BLOCK_HEIGHT);
+    dim3 const dimGrid((sizeMapsOut.area() + dimBlock.x - 1) / dimBlock.x,
+                       (numMaps            + dimBlock.y - 1) / dimBlock.y);
+    upsample_kernel2<<<dimGrid, dimBlock>>>(
+        delta, strideDelta, weights, in, strideIn,
+        sizeMapsIn.height(), sizeMapsIn.width(), sizeMapsOut.height(),
+        sizeMapsOut.width(), sizeSample.height(), sizeSample.width(),
+        numMaps);
+    CUDA_CHECK_ERROR("Kernel call 'upsample_kernel2' failed");
+#else
+    dim3 const dimBlock(BLOCK_WIDTH, BLOCK_HEIGHT);
+    dim3 const dimGrid((sizeMapsIn.area() + dimBlock.x - 1) / dimBlock.x,
+                       (numMaps           + dimBlock.y - 1) / dimBlock.y);
+    upsample_kernel3<<<dimGrid, dimBlock>>>(
+        delta, strideDelta, weights, in, strideIn,
+        sizeMapsIn.height(), sizeMapsIn.width(), sizeMapsOut.height(),
+        sizeMapsOut.width(), sizeSample.height(), sizeSample.width(),
+        numMaps);
+    CUDA_CHECK_ERROR("Kernel call 'upsample_kernel3' failed");
+#endif
+}
+
+template<> void
+upsample<double>(double const * delta, size_t const strideDelta,
+                 double const * weights,
+                 double       * in, size_t const strideIn,
+                 Size   const & sizeMapsIn,
+                 Size   const & sizeMapsOut,
+                 Size   const & sizeSample,
+                 size_t const   numMaps)
+{
+    throw NotImplementedError("Not yet supported [CUDA<double>].");
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// CuSubLayer implementation
+
+//! Computes the size of the output feature maps
+/*! \param sizeMapsIn size of input feature maps
+    \param sizeSample sample size
+*/
+inline Size
+outputMapsSize(Size const & sizeMapsIn, Size const & sizeSample)
+{
+    // Check parameters
+    if (!(sizeSample.height() > 0 && sizeSample.height() <= sizeMapsIn.height()     ) ||
+        !(sizeSample.width()  > 0 && sizeSample.width()  <= sizeMapsIn.width()      ) ||
+        !(sizeMapsIn.height() > 0 && sizeMapsIn.height() %  sizeSample.height() == 0) ||
+        !(sizeMapsIn.width()  > 0 && sizeMapsIn.width()  %  sizeSample.width()  == 0)) {
+        throw ParameterError("Inconsistent input size and sample size.");
+    }
+
+    return Size(sizeMapsIn.height() / sizeSample.height(),
+                sizeMapsIn.width()  / sizeSample.width());
+}
+
+template<typename T, class SquFnc>
+CuSubLayer<T, SquFnc>::CuSubLayer(Size const & sizeMapsIn,
+                                  size_t const numMaps,
+                                  Size const & sizeSample)
+    : sizeMapsIn_(sizeMapsIn), numMaps_(numMaps), sizeSample_(sizeSample),
+    sizeMapsOut_(outputMapsSize(sizeMapsIn_, sizeSample_)),
+    squasher_(Size(numMaps_, sizeMapsOut_.area()))
+{
+    // Allocate memory (GPU)
+    d_inSat_ = cumvli::allocv<T>((sizeMapsIn_ + Size(1, 1)).area());
+    cumvli::zerov<T>(d_inSat_, (sizeMapsIn_ + Size(1, 1)).area());
+    d_inSub_ = cumvli::allocm<T>(numMaps, sizeMapsOut_.area(), d_strideInSub_);
+    d_tmp_ = cumvli::allocv<T>(sizeMapsOut_.area());
+    d_weights_ = cumvli::allocv<T>(numMaps_);
+    d_dWeights_ = cumvli::allocv<T>(numMaps_);
+    d_biases_ = cumvli::allocv<T>(numMaps_);
+    d_dBiases_ = cumvli::allocv<T>(numMaps_);
+    d_sum_ = cumvli::allocm<T>(numMaps_, sizeMapsOut_.area(), d_strideSum_);
+    d_delta_ = cumvli::allocm<T>(numMaps_, sizeMapsOut_.area(), d_strideDelta_);
+
+    // Allocate memory (CPU)
+    h_weights_ = matvecli::allocv<T>(numMaps_);
+    h_biases_ = matvecli::allocv<T>(numMaps_);
+
+    reset(); // Reset gradients to zero
+}
+
+template<typename T, class SquFnc>
+CuSubLayer<T, SquFnc>::~CuSubLayer()
+{
+    // Deallocate memory (GPU)
+    cumvli::free<T>(d_inSat_);
+    cumvli::free<T>(d_inSub_);
+    cumvli::free<T>(d_tmp_);
+    cumvli::free<T>(d_weights_);
+    cumvli::free<T>(d_dWeights_);
+    cumvli::free<T>(d_biases_);
+    cumvli::free<T>(d_dBiases_);
+    cumvli::free<T>(d_sum_);
+    cumvli::free<T>(d_delta_);
+
+    // Deallocate memory (CPU)
+    matvecli::free<T>(h_weights_);
+    matvecli::free<T>(h_biases_);
+}
+
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::forget(T const sigma, bool scale)
+{
+    // Initialize weights and biases with random values
+    matvecli::randv<T>(h_weights_, numMaps_, sigma);
+    if (scale) {
+        matvecli::divvc<T>(h_weights_,
+                           static_cast<T>(sizeSample_.area()),
+                           numMaps_);
+    }
+    cumvli::copyv_h2d<T>(h_weights_, d_weights_, numMaps_);
+    matvecli::randv<T>(h_biases_,  numMaps_, sigma);
+    cumvli::copyv_h2d<T>(h_biases_, d_biases_, numMaps_);
+}
+
+//! Initializes weights
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::forget()
+{
+    // Set weights to 'coeff = m^(-1/2)', where 'm' is the fan-in
+    // (the number of connections feeding into the node)
+    //T const coeff = mathli::pow(static_cast<T>(sizeSample_.area()), T(-.5));
+    T const coeff = 1 / mathli::sqrt(static_cast<T>(sizeSample_.area()));
+    matvecli::setv<T>(h_weights_, numMaps_, coeff);
+    cumvli::copyv_h2d<T>(h_weights_, d_weights_, numMaps_);
+
+    // Set biases to zero (as in lush 1.2.1, \gblearn2\gb-modules-nn.lsh)
+    matvecli::zerov<T>(h_biases_, numMaps_);
+    cumvli::copyv_h2d<T>(h_biases_, d_biases_, numMaps_);
+}
+
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::reset()
+{
+    cumvli::zerov<T>(d_dWeights_, numMaps_);
+    cumvli::zerov<T>(d_dBiases_,  numMaps_);
+}
+
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::update(T const eta)
+{
+    // Compute: weights_ += eta * dWeights_
+    cumvli::axpy<T>(d_dWeights_, numMaps_, d_weights_, eta);
+
+    // Compute: biases_ += eta * dBiases_
+    cumvli::axpy<T>(d_dBiases_, numMaps_, d_biases_, eta);
+}
+
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::fprop(T const * in, size_t const strideIn,
+                             T * out, size_t const strideOut)
+{
+    CNNPLUS_ASSERT(in && strideIn >= sizeMapsIn_.area());
+    CNNPLUS_ASSERT(!out || (out && strideOut >= sizeMapsOut_.area()));
+
+    // TODO doc
+    subsample<T>(in, strideIn, d_weights_, d_biases_,
+                 d_inSub_, d_strideInSub_, d_sum_, d_strideSum_,
+                 sizeMapsIn_, sizeMapsOut_, sizeSample_, numMaps_);
+
+    if (out) {
+        // Compute: out = f(sum_)
+        squasher_.fprop(d_sum_, d_strideSum_, out, strideOut);
+    }
+}
+
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::bprop(T * in, size_t const strideIn,
+                             T const * out, size_t const strideOut,
+                             bool accumGradients)
+{
+    CNNPLUS_ASSERT(!in || (in && strideIn >= sizeMapsIn_.area()));
+    CNNPLUS_ASSERT(out && strideOut >= sizeMapsOut_.area());
+
+    // Compute: delta_ = f'(sum_) .* out
+    cumvli::copymm<T>(d_sum_, d_strideSum_, d_delta_, d_strideDelta_,
+                      numMaps_, sizeMapsOut_.area());
+    squasher_.bprop(d_delta_, d_strideDelta_, out, strideOut);
+
+    if (in) {
+        // TODO doc
+        upsample<T>(d_delta_, d_strideDelta_, d_weights_, in, strideIn,
+                    sizeMapsIn_, sizeMapsOut_, sizeSample_, numMaps_);
+    }
+
+    if (accumGradients) {
+        // Compute: dBiases_ += sums of row vectors in delta_
+        cumvli::sumrowacc<T>(d_delta_, d_strideDelta_, d_dBiases_,
+                             numMaps_, sizeMapsOut_.area());
+
+        // Compute: delta_ = delta_ .* inSub_
+        cumvli::pmulmm<T>(d_delta_, d_strideDelta_, d_inSub_, d_strideInSub_,
+                          numMaps_, sizeMapsOut_.area());
+
+        // Compute: dWeights_ += sums of row vectors in delta_
+        cumvli::sumrowacc<T>(d_delta_, d_strideDelta_, d_dWeights_,
+                             numMaps_, sizeMapsOut_.area());
+    }
+    else {
+        // Compute: dBiases_ = sums of row vectors in delta_
+        cumvli::sumrow<T>(d_delta_, d_strideDelta_, d_dBiases_,
+                          numMaps_, sizeMapsOut_.area());
+
+        // Compute: delta_ = delta_ .* inSub_
+        cumvli::pmulmm<T>(d_delta_, d_strideDelta_, d_inSub_, d_strideInSub_,
+                          numMaps_, sizeMapsOut_.area());
+
+        // Compute: dWeights_ = sums of row vectors in delta_
+        cumvli::sumrow<T>(d_delta_, d_strideDelta_, d_dWeights_,
+                          numMaps_, sizeMapsOut_.area());
+    }
+}
+
+#ifdef CNNPLUS_MATLAB_FOUND
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::load(mxArray const * arr)
+{
+    if (!arr || !mxIsStruct(arr) || !this->checkType(arr, "s"))
+        throw MatlabError("Failed to read subsampling layer.");
+
+    // Read Matlab array with weight values
+    mxArray const * arrW = mxGetField(arr, 0, "weights");
+    {
+        mwSize const dims[] = { numMaps_, 1 };
+        if (!this->checkArr(arrW, countof(dims), dims))
+            throw MatlabError("Failed to read 'weights'.");
+    }
+
+    // Read Matlab array with bias values
+    mxArray const * arrB = mxGetField(arr, 0, "biases");
+    {
+        mwSize const dims[] = { numMaps_, 1 };
+        if (!this->checkArr(arrB, countof(dims), dims))
+            throw MatlabError("Failed to read 'biases'.");
+    }
+
+    double const * pArrW = static_cast<double const *>(mxGetData(arrW));
+    double const * pArrB = static_cast<double const *>(mxGetData(arrB));
+
+    // Read weight and bias values from Matlab array
+    for (size_t i = 0; i < numMaps_; ++i) {
+        h_weights_[i] = static_cast<T>(pArrW[i]);
+        h_biases_[i]  = static_cast<T>(pArrB[i]);
+    }
+    cumvli::copyv_h2d<T>(h_weights_, d_weights_, numMaps_);
+    cumvli::copyv_h2d<T>(h_biases_,  d_biases_,  numMaps_);
+}
+
+template<typename T, class SquFnc> mxArray *
+CuSubLayer<T, SquFnc>::save() const
+{
+    char const * fieldnames[] = { "type", "weights", "biases" };
+    mxArray * arr = mxCreateStructMatrix(1, 1, countof(fieldnames), fieldnames);
+    if (!arr) throw MatlabError("Failed to create array.");
+
+    mxArray * arrW = NULL, * arrB = NULL;
+
+    try {
+        // Create Matlab arrays
+        arrW = mxCreateDoubleMatrix(numMaps_, 1, mxREAL);
+        if (!arrW) throw MatlabError("Failed to create array.");
+        arrB = mxCreateDoubleMatrix(numMaps_, 1, mxREAL);
+        if (!arrB) throw MatlabError("Failed to create array.");
+    }
+    catch (...) {
+        if (arrW) mxDestroyArray(arrW);
+        if (arrB) mxDestroyArray(arrB);
+        throw;
+    }
+
+    double * pArrW = static_cast<double *>(mxGetData(arrW));
+    double * pArrB = static_cast<double *>(mxGetData(arrB));
+
+    // Copy weight and bias values to Matlab array
+    cumvli::copyv_d2h<T>(d_weights_, h_weights_, numMaps_);
+    cumvli::copyv_d2h<T>(d_biases_,  h_biases_,  numMaps_);
+    for (size_t i = 0; i < numMaps_; ++i) {
+        pArrW[i] = h_weights_[i];
+        pArrB[i] = h_biases_[i];
+    }
+
+    // Write Matlab arrays to Matlab structure
+    mxSetField(arr, 0, "type",    mxCreateString("s"));
+    mxSetField(arr, 0, "weights", arrW);
+    mxSetField(arr, 0, "biases",  arrB);
+
+    return arr;
+}
+#endif // CNNPLUS_MATLAB_FOUND
+
+template<typename T, class SquFnc> void
+CuSubLayer<T, SquFnc>::trainableParam(typename Layer<T>::TrainableParam & param)
+{
+    // Weights
+    param.weights.val        = d_weights_;
+    param.weights.dVal       = d_dWeights_;
+    param.weights.mask       = NULL;
+    param.weights.strideVal  = numMaps_;
+    param.weights.strideDVal = numMaps_;
+    param.weights.strideMask = 0;
+    param.weights.rows       = 1;
+    param.weights.cols       = numMaps_;
+
+    // Biases
+    param.biases.val         = d_biases_;
+    param.biases.dVal        = d_dBiases_;
+    param.biases.len         = numMaps_;
+}
+
+template<typename T, class SquFnc> std::string
+CuSubLayer<T, SquFnc>::toString() const
+{
+    std::stringstream ss;
+    ss << "CuSubLayer"
+       << "<" << numMaps_
+       << "x" << sizeMapsIn_.toString()
+       << "," << numMaps_
+       << "x" << sizeMapsOut_.toString()
+       << "," << sizeSample_.toString()
+       << ";" << squasher_.toString()
+       << ">";
+    return ss.str();
+}
+
+template<typename T, class SquFnc> size_t
+CuSubLayer<T, SquFnc>::numTrainableParam() const
+{
+    return (numMaps_ * 2);
+}
+
+template<typename T, class SquFnc> size_t
+CuSubLayer<T, SquFnc>::numConnections() const
+{
+    return (numMaps_ * sizeMapsIn_.area() + numMaps_ * sizeMapsOut_.area());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class CuSubLayer< float,  CuTanh<float>        >;
+template class CuSubLayer< float,  CuStdSigmoid<float>  >;
+template class CuSubLayer< float,  CuLogSigmoid<float>  >;
+template class CuSubLayer< float,  CuIdentity<float>    >;
+
+template class CuSubLayer< double, CuTanh<double>       >;
+template class CuSubLayer< double, CuStdSigmoid<double> >;
+template class CuSubLayer< double, CuLogSigmoid<double> >;
+template class CuSubLayer< double, CuIdentity<double>   >;
+/*! @} */
+
+CNNPLUS_NS_END

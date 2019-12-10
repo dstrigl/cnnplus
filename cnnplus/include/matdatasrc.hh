@@ -1,0 +1,58 @@
+/**************************************************************************//**
+ *
+ * \file   matdatasrc.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Jul 11 2009
+ *
+ * $Id: matdatasrc.hh 1940 2009-08-04 19:44:22Z dast $
+ *
+ * \brief  Header for cnnplus::MatDataSrc.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_MATDATASRC_HH
+#define CNNPLUS_MATDATASRC_HH
+
+#include "common.hh"
+#include "datasource.hh"
+#include <vector>
+
+CNNPLUS_NS_BEGIN
+
+//! MAT-file data source for Matlab
+template<typename T>
+class MatDataSrc : public DataSource<T>
+{
+public:
+    //! Ctr
+    MatDataSrc(T dataRangeMin, T dataRangeMax);
+    //! Dtr
+    virtual ~MatDataSrc() { unload(); }
+
+    //! Loads the patterns and labels from the MAT-file
+    void load(std::string const & filename,
+        std::string const & patArrName, std::string const & labArrName);
+    //! Unloads the patterns and labels
+    void unload() throw();
+
+    virtual int fprop(T * out);
+    virtual int seek(int pos);
+    virtual void shuffle();
+    virtual void shift(int dist);
+    virtual void reset();
+    virtual size_t sizeOut() const;
+    virtual Size sizePattern() const;
+    virtual int idx(int pos = -1) const;
+    virtual std::string toString() const;
+
+protected:
+    std::string filename_;
+    Size patternSize_;
+    std::vector<int> idx_;
+    T * patterns_;
+    int * labels_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_MATDATASRC_HH

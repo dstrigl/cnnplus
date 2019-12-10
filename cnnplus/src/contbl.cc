@@ -1,0 +1,202 @@
+/**************************************************************************//**
+ *
+ * \file   contbl.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Feb 26 2009
+ *
+ * $Id: contbl.cc 1904 2009-07-30 19:29:56Z dast $
+ *
+ * \brief  Implementation of cnnplus::ConTbl.
+ *
+ *****************************************************************************/
+
+#include "contbl.hh"
+#include "error.hh"
+#include "randutil.h"
+#include <vector>
+#include <sstream>
+
+#ifdef CNNPLUS_MATLAB_FOUND
+static bool
+checkArr(mxArray const * arr, mwSize const ndims, mwSize const * dims)
+{
+    if (!arr) return false;
+    if (!mxIsLogical(arr)) return false;
+    if (mxGetNumberOfDimensions(arr) != ndims) return false;
+    for (mwSize i = 0; i < ndims; ++i) {
+        if (mxGetDimensions(arr)[i] != dims[i]) return false;
+    }
+    return true;
+}
+#endif // CNNPLUS_MATLAB_FOUND
+
+CNNPLUS_NS_BEGIN
+
+ConTbl::ConTbl(size_t rows, size_t cols, bool const val)
+    : rows_(rows), cols_(cols), tbl_(val, rows_ * cols_)
+{}
+
+ConTbl::ConTbl(size_t rows, size_t cols, double const p)
+    : rows_(rows), cols_(cols), tbl_(rows_ * cols_)
+{
+    if (p < 0 || p > 1)
+        throw ParameterError("p", "must be between 0 and 1.");
+
+    fillRandom(p);
+    fillDefects();
+}
+
+ConTbl::ConTbl(size_t rows, size_t cols, bool const * tbl)
+    : rows_(rows), cols_(cols), tbl_(rows_ * cols_)
+{
+    CNNPLUS_ASSERT(tbl);
+
+    for (size_t i = 0; i < tbl_.size(); ++i)
+        tbl_[i] = tbl[i];
+}
+
+ConTbl::ConTbl(size_t rows, size_t cols, int const * tbl)
+    : rows_(rows), cols_(cols), tbl_(rows_ * cols_)
+{
+    CNNPLUS_ASSERT(tbl);
+
+    for (size_t i = 0; i < tbl_.size(); ++i)
+        tbl_[i] = (tbl[i] ? true : false);
+}
+
+void ConTbl::fillRandom(double const p)
+{
+    randreseed();
+
+    for (size_t r = 0; r < rows_; ++r) {
+        for (size_t c = 0; c < cols_; ++c) {
+            at(r, c) = (randbiased(p) == 1);
+        }
+    }
+}
+
+void ConTbl::fillDefects()
+{
+    std::vector<size_t> defRows, defCols;
+
+    // Look for defect rows
+    for (size_t r = 0; r < rows_; ++r) {
+        size_t c = 0;
+        for (; c < cols_; ++c) {
+            if (at(r, c)) break;
+        }
+        if (c == cols_) defRows.push_back(r);
+    }
+
+    // Look for defect columns
+    for (size_t c = 0; c < cols_; ++c) {
+        size_t r = 0;
+        for (; r < rows_; ++r) {
+            if (at(r, c)) break;
+        }
+        if (r == rows_) defCols.push_back(c);
+    }
+
+    randreseed();
+
+    // Fill defect rows
+    while (defRows.size() > 0) {
+        size_t r = defRows[0], c;
+        if (defCols.size() > 0) {
+            size_t i = randrange(defCols.size());
+            c = defCols[i];
+            defCols.erase(defCols.begin() + i);
+        }
+        else {
+            c = randrange(cols_);
+        }
+        at(r, c) = true;
+        defRows.erase(defRows.begin());
+    }
+    CNNPLUS_ASSERT(defRows.empty());
+
+    // Fill defect columns
+    while (defCols.size() > 0) {
+        size_t r = randrange(rows_);
+        size_t c = defCols[0];
+        at(r, c) = true;
+        defCols.erase(defCols.begin());
+    }
+    CNNPLUS_ASSERT(defCols.empty());
+}
+
+size_t ConTbl::numConn() const
+{
+    size_t n = 0;
+    for (size_t i = 0; i < tbl_.size(); ++i)
+        n += tbl_[i];
+    return n;
+}
+
+size_t ConTbl::numInConn(size_t const r) const
+{
+    size_t n = 0;
+    for (size_t c = 0; c < cols_; ++c)
+        n += at(r, c);
+    return n;
+}
+
+size_t ConTbl::numOutConn(size_t const c) const
+{
+    size_t n = 0;
+    for (size_t r = 0; r < rows_; ++r)
+        n += at(r, c);
+    return n;
+}
+
+std::string ConTbl::toString() const
+{
+    std::stringstream ss;
+
+    for (size_t r = 0; r < rows_; ++r) {
+        ss << "[";
+        for (size_t c = 0; c < cols_; ++c) {
+            ss << at(r, c);
+            if (c < cols_ - 1) ss << ",";
+        }
+        ss << "]\n";
+    }
+
+    return ss.str();
+}
+
+#ifdef CNNPLUS_MATLAB_FOUND
+void
+ConTbl::load(mxArray const * arr)
+{
+    mxArray const * arrTbl = mxGetField(arr, 0, "contbl");
+    mwSize const dims[] = { rows_, cols_ };
+    if (!checkArr(arrTbl, countof(dims), dims))
+        throw MatlabError("Failed to read 'contbl'.");
+
+    bool const * pArrTbl = static_cast<bool const *>(mxGetData(arrTbl));
+    for (size_t r = 0; r < rows_; ++r) {
+        for (size_t c = 0; c < cols_; ++c) {
+            tbl_[r * cols_ + c] = pArrTbl[r + c * rows_];
+        }
+    }
+}
+
+void
+ConTbl::save(mxArray * arr) const
+{
+    mxArray * arrTbl = mxCreateLogicalMatrix(rows_, cols_);
+    if (!arrTbl) throw MatlabError("Failed to create array.");
+
+    bool * pArrTbl = static_cast<bool *>(mxGetData(arrTbl));
+    for (size_t r = 0; r < rows_; ++r) {
+        for (size_t c = 0; c < cols_; ++c) {
+            pArrTbl[r + c * rows_] = tbl_[r * cols_ + c];
+        }
+    }
+
+    mxSetField(arr, 0, "contbl", arrTbl);
+}
+#endif // CNNPLUS_MATLAB_FOUND
+
+CNNPLUS_NS_END

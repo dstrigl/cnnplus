@@ -1,0 +1,76 @@
+/**************************************************************************//**
+ *
+ * \file   fulllayer.hh
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Dec 19 2008
+ *
+ * $Id$
+ *
+ * \brief  Header for cnnplus::FullLayer.
+ *
+ *****************************************************************************/
+
+#ifndef CNNPLUS_FULLLAYER_HH
+#define CNNPLUS_FULLLAYER_HH
+
+#include "common.hh"
+#include "layer.hh"
+#include "squasher.hh"
+
+CNNPLUS_NS_BEGIN
+
+//! Fully connected layer
+template< typename T, class SquFnc = Tanh<T> >
+class FullLayer : public Layer<T>
+{
+public:
+    //! Ctr
+    /*! \param sizeIn input size
+        \param sizeOut output size
+     */
+    FullLayer(Size const & sizeIn, Size const & sizeOut);
+    //! Dtr
+    virtual ~FullLayer();
+
+    virtual void forget(T sigma, bool scale = false);
+    virtual void forget();
+    virtual void reset();
+    virtual void update(T eta);
+    virtual void fprop(T const * in, size_t strideIn,
+                       T * out, size_t strideOut);
+    virtual void bprop(T * in, size_t strideIn,
+                       T const * out, size_t strideOut,
+                       bool accumGradients = false);
+#ifdef CNNPLUS_MATLAB_FOUND
+    virtual void load(mxArray const * arr);
+    virtual mxArray * save() const;
+    virtual mxArray * writeOut(T * const out, size_t strideOut) const;
+#endif // CNNPLUS_MATLAB_FOUND
+    virtual Size sizeIn() const { return sizeIn_; }
+    virtual Size sizeOut() const { return sizeOut_; }
+    virtual void trainableParam(typename Layer<T>::TrainableParam & param);
+    virtual std::string toString() const;
+    virtual size_t numTrainableParam() const;
+    virtual size_t numConnections() const;
+
+private:
+    Size const sizeIn_;
+    Size const sizeOut_;
+
+    SquFnc squasher_;
+
+    T * in_;
+    T * weights_;
+    size_t strideWeights_;
+    T * dWeights_;
+    size_t strideDWeights_;
+    T * biases_;
+    T * dBiases_;
+    T * sum_;
+    T * delta_;
+    T * tmp_;
+};
+
+CNNPLUS_NS_END
+
+#endif // CNNPLUS_FULLLAYER_HH

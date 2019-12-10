@@ -1,0 +1,460 @@
+/**************************************************************************//**
+ *
+ * \file   mnistsource.cc
+ * \author Daniel Strigl, Klaus Kofler
+ * \date   Dec 07 2008
+ *
+ * $Id: mnistsource.cc 1827 2009-07-20 18:17:58Z dast $
+ *
+ * \brief  Implementation of cnnplus::MnistFileSource
+ *         and cnnplus::MnistMemSource.
+ *
+ *****************************************************************************/
+
+#include "mnistsource.hh"
+#include "error.hh"
+#include <sstream>
+#include <algorithm>
+#include <cstring>
+
+CNNPLUS_NS_BEGIN
+
+CNNPLUS_ANON_NS_BEGIN
+
+//! Swap endian order of a type \a T
+/*!
+\par Example:
+\code
+unsigned int a = 0xabcd;
+a = mathli::endianSwap(a); // = 0xdcba
+\endcode
+*/
+template<typename T> inline T& endianSwap(T& a)
+{
+    if (sizeof(a) != 1)
+    {
+        unsigned char *pStart = reinterpret_cast<unsigned char*>(&a),
+            *pEnd = pStart + sizeof(a);
+        for (size_t i = 0; i < sizeof(a) / 2; ++i)
+        {
+            unsigned char const tmp = *pStart;
+            *(pStart++) = *(--pEnd);
+            *pEnd = tmp;
+        }
+    }
+    return a;
+}
+
+//! Maximal number of dimensions in an idx file
+static int const MAX_DIMS = 255;
+
+//! Reads the header of an idx file
+/*! \param[in]  file input file stream
+    \param[out] dataType type of data in the file
+                \li \a 0x08: unsigned byte
+                \li \a 0x09: signed byte
+                \li \a 0x0B: short (2 byte)
+                \li \a 0x0C: int (4 byte)
+                \li \a 0x0D: float (4 byte)
+                \li \a 0x0E: double (8 byte)
+    \param[out] dims array of values, specifying the size of each dimension
+    \param[out] numDims number of dimensions (max. #MAX_DIMS)
+    \see http://yann.lecun.com/exdb/mnist/
+ */
+static void
+readIdxHeader(std::ifstream & file, unsigned char & dataType, int * dims, int & numDims)
+{
+    // Read magic number
+    unsigned int magicNumber = 0;
+    if (!file.read(
+        reinterpret_cast<char*>(&magicNumber), sizeof(magicNumber)))
+        throw IoError("Failed to read idx header.");
+    magicNumber = endianSwap(magicNumber);
+    if ((magicNumber & 0xffff0000) != 0x00000000)
+        throw DataSourceError("Invalid idx header.");
+
+    // Get data type and number of dimensions
+    dataType = static_cast<unsigned char>((magicNumber >> 8) & 0x000000ff);
+    numDims  = static_cast<unsigned char>((magicNumber >> 0) & 0x000000ff);
+
+    // Read size of each dimension
+    for (int i = 0; i < numDims; ++i)
+    {
+        int dimSize = 0;
+        if (!file.read(reinterpret_cast<char*>(&dimSize), sizeof(dimSize)))
+            throw IoError("Failed to read idx header.");
+        if ((dims[i] = endianSwap(dimSize)) < 1)
+            throw DataSourceError("Invalid dimension size.");
+    }
+}
+
+CNNPLUS_ANON_NS_END
+
+template<typename T>
+MnistDataSource<T>::MnistDataSource(
+    Size const & imgSize, T const dataRangeMin, T const dataRangeMax)
+    : DataSource<T>(dataRangeMin, dataRangeMax), imageFileName_(), labelFileName_(),
+    desImageSize_(imgSize), realImageSize_(),
+    scale_((dataRangeMax - dataRangeMin) / 255), shift_(dataRangeMin),
+    yStart_(0), yEnd_(0), xStart_(0), xEnd_(0), idx_()
+{
+    if (imgSize.height() < 28 || imgSize.width() < 28)
+        throw ParameterError("imgSize", "must be greater or equal to 28x28.");
+}
+
+template<typename T> void
+MnistDataSource<T>::readHeaders(std::ifstream & fileImage, std::ifstream & fileLabel)
+{
+    CNNPLUS_ASSERT(fileImage.is_open());
+    CNNPLUS_ASSERT(fileLabel.is_open());
+
+    unsigned char dataType = 0;
+    int dims[MAX_DIMS] = { 0 };
+    int numDims = 0;
+
+    // Read idx header of image file
+    readIdxHeader(fileImage, dataType, dims, numDims);
+    if (dataType != 0x08)
+        throw DataSourceError("Image file must be of type 'unsigned byte'.");
+    else if (numDims != 3)
+        throw DataSourceError("Image file must be 3-dimensional.");
+    else if (dims[0] <= 0)
+        throw DataSourceError("Invalid number of images in image file.");
+    else if (dims[1] > static_cast<int>(desImageSize_.height()) ||
+             dims[2] > static_cast<int>(desImageSize_.width())) {
+        std::stringstream ss;
+        ss << "Size of images must be smaller or equal to "
+            << desImageSize_.height() << "x" << desImageSize_.width() << ".";
+        throw DataSourceError(ss.str());
+    }
+    setRealImageSize(dims[1], dims[2]); // store real size of images
+    this->size_ = dims[0];              // store number of patterns
+
+    // Read idx header of label file
+    readIdxHeader(fileLabel, dataType, dims, numDims);
+    if (dataType != 0x08)
+        throw DataSourceError("Label file must be of type 'unsigned byte'.");
+    else if (numDims != 1)
+        throw DataSourceError("Label file must be 1-dimensional.");
+    if (dims[0] != this->size_)
+        throw DataSourceError("Number of items in image file and label file differ.");
+}
+
+template<typename T> void
+MnistDataSource<T>::shuffle()
+{
+    std::random_shuffle(idx_.begin(), idx_.end());
+}
+
+template<typename T> void
+MnistDataSource<T>::shift(int dist)
+{
+    if (this->size_ > 0) {
+        while (dist < 0) dist += this->size_;
+        for (int i = 0; i < this->size_; ++i)
+            idx_[i] = (idx_[i] + dist) % this->size_;
+    }
+}
+
+template<typename T> void
+MnistDataSource<T>::reset()
+{
+    if (this->size_ > 0) {
+        idx_.resize(this->size_);
+        for (int i = 0; i < this->size_; ++i)
+            idx_[i] = i;
+    }
+}
+
+template<typename T> size_t
+MnistDataSource<T>::sizeOut() const
+{
+    return desImageSize_.area();
+}
+
+template<typename T> Size
+MnistDataSource<T>::sizePattern() const
+{
+    return desImageSize_;
+}
+
+template<typename T> int
+MnistDataSource<T>::idx(int pos) const
+{
+    pos = (pos < 0) ? this->curPos_ : pos;
+
+    if (pos < 0 || pos >= this->size_) {
+        std::stringstream ss;
+        ss << "must be between 0 and " << (this->size_ - 1) << ".";
+        throw ParameterError("pos", ss.str());
+    }
+
+    return idx_[pos];
+}
+
+template<typename T>
+MnistFileSource<T>::MnistFileSource(
+    Size const & imgSize, T const dataRangeMin, T const dataRangeMax)
+    : MnistDataSource<T>(imgSize, dataRangeMin, dataRangeMax),
+    fileImage_(), fileLabel_(), imageBegin_(-1), labelBegin_(-1)
+{}
+
+template<typename T> void
+MnistFileSource<T>::open(std::string const & imageFile, std::string const & labelFile)
+{
+    close();
+
+    try {
+        // Open image file
+        fileImage_.open(imageFile.c_str(), std::ios::binary);
+        if (!fileImage_)
+            throw IoError("Failed to open image file '" + imageFile + "'.");
+
+        // Open label file
+        fileLabel_.open(labelFile.c_str(), std::ios::binary);
+        if (!fileLabel_)
+            throw IoError("Failed to open label file '" + labelFile + "'.");
+
+        // Read header of image and label file
+        this->readHeaders(fileImage_, fileLabel_);
+
+        // Get current position of file pointers (begin of data in files)
+        if ((imageBegin_ = fileImage_.tellg()) < 0)
+            throw IoError("Failed to get file pointer position of image file.");
+        if ((labelBegin_ = fileLabel_.tellg()) < 0)
+            throw IoError("Failed to get file pointer position of label file.");
+    }
+    catch (...) {
+        close();
+        throw;
+    }
+
+    this->imageFileName_ = imageFile;
+    this->labelFileName_ = labelFile;
+
+    this->reset();
+    this->curPos_ = 0;
+}
+
+template<typename T> void
+MnistFileSource<T>::close() throw()
+{
+    // Close files
+    if (fileImage_.is_open()) fileImage_.close();
+    if (fileLabel_.is_open()) fileLabel_.close();
+    imageBegin_ = labelBegin_ = -1;
+
+    this->imageFileName_.clear();
+    this->labelFileName_.clear();
+    this->realImageSize_.clear();
+    this->yStart_ = this->yEnd_ = 0;
+    this->xStart_ = this->xEnd_ = 0;
+    this->idx_.clear();
+    this->size_ = this->curPos_ = -1;
+}
+
+template<typename T> int
+MnistFileSource<T>::fprop(T * out)
+{
+    CNNPLUS_ASSERT(fileImage_.is_open());
+    CNNPLUS_ASSERT(fileLabel_.is_open());
+    CNNPLUS_ASSERT(out);
+
+    std::vector<unsigned char> tmp(this->realImageSize_.area());
+
+    // Read pixel values
+    if (!fileImage_.read(reinterpret_cast<char*>(&tmp[0]), static_cast<std::streamsize>(tmp.size())))
+        throw IoError("Failed to read from image file.");
+
+    // Scale pixel values between 'dataRangeMin_' and 'dataRangeMax_' and copy it into the center of the output memory
+    for (size_t y = 0; y < this->desImageSize_.height(); ++y) {
+        for (size_t x = 0; x < this->desImageSize_.width(); ++x) {
+            out[y * this->desImageSize_.width() + x] =
+                (y >= this->yStart_ && y < this->yEnd_ && x >= this->xStart_ && x < this->xEnd_)
+                ? (tmp[(y - this->yStart_) * this->realImageSize_.width() + (x - this->xStart_)] * this->scale_ + this->shift_)
+                : this->dataRangeMin_;
+            //CNNPLUS_ASSERT(out[y * this->desImageSize_.width() + x] >= this->dataRangeMin_
+            //            && out[y * this->desImageSize_.width() + x] <= this->dataRangeMax_);
+        }
+    }
+
+    // Read label
+    unsigned char label = 0;
+    if (!fileLabel_.read(reinterpret_cast<char*>(&label), sizeof(label)))
+        throw IoError("Failed to read from label file.");
+
+    seek(this->curPos_);
+
+    return label;
+}
+
+template<typename T> int
+MnistFileSource<T>::seek(int const pos)
+{
+    CNNPLUS_ASSERT(fileImage_.is_open());
+    CNNPLUS_ASSERT(fileLabel_.is_open());
+
+    if (pos < 0 || pos >= this->size_) {
+        std::stringstream ss;
+        ss << "must be between 0 and " << (this->size_ - 1) << ".";
+        throw ParameterError("pos", ss.str());
+    }
+
+    if (!fileImage_.seekg(imageBegin_ + std::streamoff(this->idx_[pos] * this->realImageSize_.area())))
+        throw IoError("Failed to set file pointer of image file.");
+    if (!fileLabel_.seekg(labelBegin_ + std::streamoff(this->idx_[pos])))
+        throw IoError("Failed to set file pointer of label file.");
+
+    int const oldPos = this->curPos_;
+    this->curPos_ = pos;
+    return oldPos;
+}
+
+template<typename T> std::string
+MnistFileSource<T>::toString() const
+{
+    std::stringstream ss;
+    ss << "MnistFileSource(\""
+        << this->imageFileName_ << "\",\""
+        << this->labelFileName_ << "\"; "
+        << "dataRange=[" << this->dataRangeMin_ << "," << this->dataRangeMax_ << "], "
+        << "size=" << this->size_ << ")";
+    return ss.str();
+}
+
+template<typename T>
+MnistMemSource<T>::MnistMemSource(
+    Size const & imgSize, T const dataRangeMin, T const dataRangeMax)
+    : MnistDataSource<T>(imgSize, dataRangeMin, dataRangeMax),
+    images_(NULL), labels_(NULL)
+{}
+
+template<typename T> void
+MnistMemSource<T>::load(std::string const & imageFile, std::string const & labelFile)
+{
+    unload();
+
+    try {
+        // Open image file
+        std::ifstream fileImage(imageFile.c_str(), std::ios::binary);
+        if (!fileImage)
+            throw IoError("Failed to open image file '" + imageFile + "'.");
+
+        // Open label file
+        std::ifstream fileLabel(labelFile.c_str(), std::ios::binary);
+        if (!fileLabel)
+            throw IoError("Failed to open label file '" + labelFile + "'.");
+
+        // Read header of image and label file
+        this->readHeaders(fileImage, fileLabel);
+
+        // Allocate memory
+        images_ = static_cast<unsigned char *>(malloc(this->size_ * this->realImageSize_.area()));
+        labels_ = static_cast<unsigned char *>(malloc(this->size_));
+
+        // Read pixel values
+        if (!fileImage.read(reinterpret_cast<char*>(images_),
+            static_cast<std::streamsize>(this->size_ * this->realImageSize_.area())))
+            throw IoError("Failed to read from image file.");
+
+        // Read labels
+        if (!fileLabel.read(reinterpret_cast<char*>(labels_),
+            static_cast<std::streamsize>(this->size_)))
+            throw IoError("Failed to read from label file.");
+
+        // Close files
+        fileImage.close();
+        fileLabel.close();
+    }
+    catch (...) {
+        unload();
+        throw;
+    }
+
+    this->imageFileName_ = imageFile;
+    this->labelFileName_ = labelFile;
+
+    this->reset();
+    this->curPos_ = 0;
+}
+
+template<typename T> void
+MnistMemSource<T>::unload() throw()
+{
+    // Deallocate memory
+    if (images_) free(images_);
+    if (labels_) free(labels_);
+    images_ = labels_ = NULL;
+
+    this->imageFileName_.clear();
+    this->labelFileName_.clear();
+    this->realImageSize_.clear();
+    this->yStart_ = this->yEnd_ = 0;
+    this->xStart_ = this->xEnd_ = 0;
+    this->idx_.clear();
+    this->size_ = this->curPos_ = -1;
+}
+
+template<typename T> int
+MnistMemSource<T>::fprop(T * out)
+{
+    CNNPLUS_ASSERT(out);
+    if (!images_ || !labels_) throw DataSourceError("No data loaded.");
+
+    // Scale pixel values between 'dataRangeMin_' and 'dataRangeMax_' and copy it into the center of the output memory
+    unsigned char const * pix = images_ + this->idx_[this->curPos_] * this->realImageSize_.area();
+    for (size_t y = 0; y < this->desImageSize_.height(); ++y) {
+        for (size_t x = 0; x < this->desImageSize_.width(); ++x) {
+            out[y * this->desImageSize_.width() + x] =
+                (y >= this->yStart_ && y < this->yEnd_ && x >= this->xStart_ && x < this->xEnd_)
+                ? (pix[(y - this->yStart_) * this->realImageSize_.width() + (x - this->xStart_)] * this->scale_ + this->shift_)
+                : this->dataRangeMin_;
+            //CNNPLUS_ASSERT(out[y * this->desImageSize_.width() + x] >= this->dataRangeMin_
+            //            && out[y * this->desImageSize_.width() + x] <= this->dataRangeMax_);
+        }
+    }
+
+    // Return label
+    return labels_[this->idx_[this->curPos_]];
+}
+
+template<typename T> int
+MnistMemSource<T>::seek(int const pos)
+{
+    if (pos < 0 || pos >= this->size_) {
+        std::stringstream ss;
+        ss << "must be between 0 and " << (this->size_ - 1) << ".";
+        throw ParameterError("pos", ss.str());
+    }
+
+    int const oldPos = this->curPos_;
+    this->curPos_ = pos;
+    return oldPos;
+}
+
+template<typename T> std::string
+MnistMemSource<T>::toString() const
+{
+    std::stringstream ss;
+    ss << "MnistMemSource(\""
+        << this->imageFileName_ << "\",\""
+        << this->labelFileName_ << "\"; "
+        << "dataRange=[" << this->dataRangeMin_ << "," << this->dataRangeMax_ << "], "
+        << "size=" << this->size_ << ")";
+    return ss.str();
+}
+
+/*! \addtogroup eti_grp Explicit Template Instantiation
+ @{
+ */
+template class MnistDataSource<float>;
+template class MnistDataSource<double>;
+
+template class MnistFileSource<float>;
+template class MnistFileSource<double>;
+
+template class MnistMemSource<float>;
+template class MnistMemSource<double>;
+/*! @} */
+
+CNNPLUS_NS_END
