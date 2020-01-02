@@ -14,5 +14,5 @@ The second main goal of this thesis is to reduce the training time of CNNs and e
 For more details, see:
 
 * `mt-strigl-kofler.pdf <https://github.com/dstrigl/cnnplus/blob/master/thesis/mt-strigl-kofler.pdf>`_ and
-* `talk.pdf <https://github.com/dstrigl/cnnplus/blob/master/talk/talk.pdf>`_
+* `talk-strigl-kofler.pdf <https://github.com/dstrigl/cnnplus/blob/master/talk/talk-strigl-kofler.pdf>`_
 
