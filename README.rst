@@ -1,7 +1,11 @@
+========
 Abstract
 ========
 
 Machine learning algorithms are usually very computational intensive and rather complex in their implementation, especially the well performing ones. In case of neural networks it is mainly the training time which is often very time-consuming. Training of neural networks using a voluminous training dataset can take several days or even weeks. These two points are also valid for the so-called Convolutional Neural Networks (CNNs), invented by Yann LeCun in the early 1990s. However, CNNs deliver state-of-the-art performance on two-dimensional pattern recognition and classification tasks in a broad area of applications.
+
+.. image:: lenet5.pdf
+   :align: center
 
 This work aims at mastering both major drawbacks of CNNs, namely the time-consuming training and the implementation complexity. Therefore, a flexible, high performance but easy-to-use library for CNNs was developed. This library hides the implementation complexity from the user since CNNs can easily be constructed by composing the single types of layers needed for the network. Furthermore, some implementations of well performing networks described in the literature are delivered with this library.
 
@@ -10,3 +14,4 @@ The second main goal of this thesis is to reduce the training time of CNNs and e
 For more details, see:
 * thesis/mt-strigl-kofler.pdf and
 * talk/talk.pdf
+
